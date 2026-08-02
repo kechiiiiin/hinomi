@@ -50,6 +50,7 @@ public struct HookMessage: Equatable {
     public var toolCommand: String?
     public var toolFilePath: String?
     public var notificationType: String?
+    public var prompt: String?
     public var message: String?
     public var source: String?
     public var endReason: String?
@@ -81,6 +82,7 @@ public struct HookMessage: Equatable {
         termProgram = HookMessage.string(object, "hinomi_term_program")
         termSessionID = HookMessage.string(object, "hinomi_term_session_id")
         notificationType = HookMessage.string(object, "notification_type")
+        prompt = HookMessage.string(object, "prompt")
         message = HookMessage.string(object, "message")
             ?? HookMessage.string(object, "last_assistant_message")
         source = HookMessage.string(object, "source")
@@ -118,6 +120,22 @@ public struct HookMessage: Equatable {
             return "\(toolName): \(URL(fileURLWithPath: toolFilePath).lastPathComponent)"
         }
         return toolName
+    }
+
+    /// permission_mode がこのツールを自動許可する設定なら true。
+    /// その場合、端末側でも許可プロンプトは出ないので、notch で尋ねる意味がない。
+    /// （PreToolUse は許可判定より前に呼ばれるため、settings.json の allowlist までは判別できない）
+    public var isAutoApprovedByPermissionMode: Bool {
+        guard let permissionMode else { return false }
+        switch permissionMode {
+        case "bypassPermissions":
+            return true
+        case "acceptEdits":
+            guard let toolName else { return false }
+            return ["Edit", "Write", "MultiEdit", "NotebookEdit"].contains(toolName)
+        default:
+            return false
+        }
     }
 
     /// Notification のうち、許可を求めているもの

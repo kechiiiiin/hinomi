@@ -54,6 +54,8 @@ public struct SessionInfo: Identifiable, Equatable {
     public var id: String
     public var cwd: String?
     public var projectName: String
+    /// 直近のユーザープロンプト（＝いま何をさせているか）。UserPromptSubmit で更新される。
+    public var title: String?
     public var termProgram: String?
     public var state: SessionState
     public var activity: String
@@ -122,6 +124,7 @@ public final class SessionStore {
             id: message.sessionID,
             cwd: message.cwd,
             projectName: message.projectName,
+            title: nil,
             termProgram: message.termProgram,
             state: .idle,
             activity: "セッション開始",
@@ -152,9 +155,12 @@ public final class SessionStore {
             info.state = .working
             info.activity = "指示を処理中"
             info.pending = nil
+            if let prompt = message.prompt {
+                info.title = HookMessage.condensed(prompt, limit: 60)
+            }
 
         case .preToolUse:
-            if message.mode == .ask {
+            if message.mode == .ask && !message.isAutoApprovedByPermissionMode {
                 let summary = message.toolSummary ?? (message.toolName ?? "ツール")
                 info.pending = PendingPermission(
                     requestID: message.requestID,

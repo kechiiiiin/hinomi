@@ -30,7 +30,13 @@ final class SessionsModel: ObservableObject {
     /// socket から届いたメッセージを反映する（main スレッドで呼ばれる）
     func handle(_ message: HookMessage, respond: @escaping (PermissionAnswer) -> Void) {
         if message.mode == .ask {
-            answerHandlers[message.requestID] = respond
+            if message.isAutoApprovedByPermissionMode {
+                // 自動許可モード（bypassPermissions / acceptEdits の編集系）は端末でも聞かれない。
+                // 即「decision なし」を返してフックを待たせず、通常フローに流す。
+                respond(.none)
+            } else {
+                answerHandlers[message.requestID] = respond
+            }
         }
         let effect = store.apply(message)
         if effect != .none {

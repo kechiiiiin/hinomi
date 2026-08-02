@@ -45,6 +45,38 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(session?.pending?.remainingSeconds(now: base.addingTimeInterval(5)), 10)
     }
 
+    func testUserPromptBecomesTitle() {
+        let store = SessionStore()
+        store.apply(msg(#"{"session_id":"s1","cwd":"/w/hinomi","hook_event_name":"UserPromptSubmit","prompt":"ノッチの位置を直して\nお願い"}"#))
+        XCTAssertEqual(store.session(id: "s1")?.title, "ノッチの位置を直して お願い")
+        // 次のプロンプトで上書き（＝いまのタスクを示す）
+        store.apply(msg(#"{"session_id":"s1","hook_event_name":"UserPromptSubmit","prompt":"タイトルを表示して"}"#, offset: 1))
+        XCTAssertEqual(store.session(id: "s1")?.title, "タイトルを表示して")
+        // prompt の無いイベントではタイトルを消さない
+        store.apply(msg(#"{"session_id":"s1","hook_event_name":"Stop","last_assistant_message":"できました"}"#, offset: 2))
+        XCTAssertEqual(store.session(id: "s1")?.title, "タイトルを表示して")
+    }
+
+    func testAskIsSuppressedInAutoPermissionModes() {
+        let store = SessionStore()
+        // bypassPermissions は全ツール素通し
+        let bypass = store.apply(msg("""
+        {"session_id":"s6","hook_event_name":"PreToolUse","tool_name":"Bash",
+         "tool_input":{"command":"ls"},"permission_mode":"bypassPermissions","hinomi_mode":"ask"}
+        """))
+        XCTAssertEqual(bypass, .none)
+        XCTAssertEqual(store.session(id: "s6")?.state, .working)
+        XCTAssertNil(store.session(id: "s6")?.pending)
+
+        // acceptEdits は編集系のみ素通し、Bash は尋ねる
+        let editSuppressed = store.apply(msg(#"{"session_id":"s7","hook_event_name":"PreToolUse","tool_name":"Edit","permission_mode":"acceptEdits","hinomi_mode":"ask"}"#))
+        XCTAssertEqual(editSuppressed, .none)
+        XCTAssertNil(store.session(id: "s7")?.pending)
+        let bashAsks = store.apply(msg(#"{"session_id":"s7","hook_event_name":"PreToolUse","tool_name":"Bash","permission_mode":"acceptEdits","hinomi_mode":"ask"}"#, offset: 1))
+        XCTAssertEqual(bashAsks, .permissionRequested)
+        XCTAssertNotNil(store.session(id: "s7")?.pending)
+    }
+
     func testEventModePreToolUseDoesNotCreatePending() {
         let store = SessionStore()
         let effect = store.apply(msg(#"{"session_id":"s3","hook_event_name":"PreToolUse","tool_name":"Read","hinomi_mode":"event"}"#))

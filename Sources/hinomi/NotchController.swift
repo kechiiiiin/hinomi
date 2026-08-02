@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// - `.nonactivatingPanel` なので、クリックしてもターミナルからフォーカスを奪わない
 /// - 全 Space / フルスクリーンの上に出す
-/// - ノッチ有無は `safeAreaInsets.top` と `visibleFrame` の差の大きい方で吸収する
+/// - 上端を画面最上部に合わせ、メニューバー（ノッチ）の高さに重ねて表示する
 final class NotchController {
     private let model: SessionsModel
     private let panel: NSPanel
@@ -116,10 +116,10 @@ final class NotchController {
 
         let screen = currentScreen
         let frame = screen.frame
-        // ノッチ機では safeAreaInsets.top（≒38pt）、非ノッチ機ではメニューバー高さ（≒24pt）が入る
-        let topInset = max(screen.safeAreaInsets.top, frame.maxY - screen.visibleFrame.maxY)
+        // メニューバー（ノッチ）に重ねる: 上端を画面最上部にぴったり付ける。
+        // panel.level = .statusBar はメニューバーより上なので、バーの上に描ける。
         let origin = CGPoint(x: (frame.midX - size.width / 2).rounded(),
-                             y: (frame.maxY - topInset - size.height - 2).rounded())
+                             y: (frame.maxY - size.height).rounded())
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
     }
 

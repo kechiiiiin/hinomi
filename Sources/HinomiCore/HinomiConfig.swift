@@ -10,7 +10,7 @@ public struct HinomiConfig: Codable, Equatable {
     public var permissionToolMatcher: String
     /// Stop（完了）時に鳴らす NSSound 名。空文字で無音
     public var doneSound: String
-    /// 許可待ち発生時に鳴らす NSSound 名。空文字で無音
+    /// 許可待ち発生時に鳴らす NSSound 名。空文字で無音（既定。うるさいため 2026-08-02 に無音化）
     public var permissionSound: String
     /// イベント発生時に自動展開しておく秒数
     public var autoExpandSeconds: Double
@@ -24,7 +24,7 @@ public struct HinomiConfig: Codable, Equatable {
         permissionWaitSeconds: 15,
         permissionToolMatcher: "Bash|Edit|Write|MultiEdit|NotebookEdit",
         doneSound: "Glass",
-        permissionSound: "Funk",
+        permissionSound: "",
         autoExpandSeconds: 6,
         showWhenEmpty: false,
         doneRetentionMinutes: 30

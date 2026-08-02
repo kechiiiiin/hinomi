@@ -17,6 +17,15 @@ enum NotchLayout {
     }
 }
 
+/// 上端は画面最上部（メニューバー）に接するので、下側だけ丸めたノッチ風の形。
+private func notchShape(radius: CGFloat) -> UnevenRoundedRectangle {
+    UnevenRoundedRectangle(topLeadingRadius: 0,
+                           bottomLeadingRadius: radius,
+                           bottomTrailingRadius: radius,
+                           topTrailingRadius: 0,
+                           style: .continuous)
+}
+
 private extension SessionState {
     var tint: Color {
         switch self {
@@ -69,10 +78,10 @@ struct NotchView: View {
         .padding(.horizontal, 10)
         .frame(height: NotchLayout.collapsedSize.height)
         .background(
-            Capsule().fill(Color.black.opacity(0.86))
+            notchShape(radius: 13).fill(Color.black.opacity(0.86))
         )
         .overlay(
-            Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+            notchShape(radius: 13).stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
         .frame(width: NotchLayout.collapsedSize.width, height: NotchLayout.collapsedSize.height)
     }
@@ -105,12 +114,10 @@ struct NotchView: View {
         .padding(.vertical, NotchLayout.verticalPadding)
         .frame(width: NotchLayout.expandedWidth, alignment: .top)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.black.opacity(0.92))
+            notchShape(radius: 16).fill(Color.black.opacity(0.92))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+            notchShape(radius: 16).stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
     }
 
@@ -149,16 +156,26 @@ private struct SessionRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(session.projectName)
+                    // 見出しは「いま何をさせているか」（直近プロンプト）。無ければプロジェクト名
+                    Text(session.title ?? session.projectName)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                    if session.title != nil {
+                        Text(session.projectName)
+                            .font(.system(size: 9))
+                            .foregroundColor(Color(white: 0.5))
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                    }
                     Text(session.state.label)
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(session.state.tint)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(Capsule().fill(session.state.tint.opacity(0.16)))
+                        .layoutPriority(1)
                     Spacer(minLength: 0)
                     Text(session.elapsedText(now: model.now))
                         .font(.system(size: 10, design: .rounded))
