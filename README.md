@@ -21,8 +21,10 @@
 
 ## 導入
 
+必要なもの: macOS 14+、Swift ツールチェイン（Xcode か Command Line Tools: `xcode-select --install`）、Claude Code。
+
 ```bash
-git clone <this repo> ~/work/hinomi
+git clone git@github.com:kechiiiiin/hinomi.git ~/work/hinomi
 cd ~/work/hinomi
 
 make test            # ユニットテスト
@@ -48,7 +50,8 @@ make status
 
 - **通常は畳んだ小さなピル**（炎アイコン＋セッション数＋状態ドット）。セッションが1件も無ければ引っ込みます
 - **マウスを乗せると展開**して一覧が出ます。完了・許可待ちのイベントが来たときは自動で数秒開きます
-- 一覧の各行: タイトル（直近のユーザープロンプト。届くまではプロジェクト名）／プロジェクト名／状態／最終イベントからの経過／ターミナル名／直近の活動
+- 一覧の各行: タイトル／プロジェクト名／状態／最終イベントからの経過／ターミナル名／直近の活動
+- タイトルの優先順: **デスクトップアプリのセッションタイトル**（`~/Library/Application Support/Claude/claude-code-sessions` から `cliSessionId` で照合・15秒ごとに再取得）> 直近のユーザープロンプト > プロジェクト名。ターミナル起動のセッションはアプリのタイトルを持たないので、プロンプトが見出しになります
 - **行をクリック**すると、そのセッションのターミナルアプリが前面に出ます（iTerm2 / Terminal.app / Ghostty / WezTerm / kitty / Alacritty / Warp / Hyper / VS Code / Cursor）。タブ単位のジャンプはしません
 - 状態の色: 許可待ち=橙 / 入力待ち=黄 / 実行中=緑 / 完了=青 / 待機=灰
 - メニューバーの炎アイコンから、表示の切り替え・一覧のクリア・hooks の導入と除去・ログと設定ファイルを開けます
