@@ -76,7 +76,8 @@ enum CLI {
         print("待ち受け: \(listening ? "あり（アプリ起動中）" : "なし（アプリ未起動）")")
         print("hooks:   \(installer.isInstalled() ? "導入済み" : "未導入") (\(HinomiPaths.claudeSettingsURL.path))")
         let config = HinomiConfig.load()
-        print("許可UI:  \(config.permissionPromptEnabled ? "有効" : "無効") / 待ち \(Int(config.clampedPermissionWait))秒 / matcher \(config.permissionToolMatcher)")
+        let matcherLabel = config.permissionToolMatcher.isEmpty ? "全ツール" : config.permissionToolMatcher
+        print("許可UI:  \(config.permissionPromptEnabled ? "有効" : "無効") / 待ち \(Int(config.clampedPermissionWait))秒 / matcher \(matcherLabel)")
         exit(listening ? 0 : 1)
     }
 

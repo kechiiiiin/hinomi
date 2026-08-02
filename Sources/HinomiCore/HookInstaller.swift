@@ -44,21 +44,19 @@ public struct HookInstaller {
             Entry(event: "Notification", matcher: nil, mode: .event, timeout: 10, async: true),
             Entry(event: "Stop", matcher: nil, mode: .event, timeout: 10, async: true),
             Entry(event: "SessionEnd", matcher: nil, mode: .event, timeout: 10, async: true),
+            // PreToolUse は「直近の活動」表示のためだけ。常に async でセッションを待たせない
+            Entry(event: "PreToolUse", matcher: nil, mode: .event, timeout: 10, async: true),
         ]
         if config.permissionPromptEnabled {
+            // Allow/Deny は PermissionRequest（実際に許可を聞かれる場面でのみ発火）で受ける。
             // ask は応答を待つので async にできない。timeout は待ち時間 + 余裕。
             let timeout = Int(config.clampedPermissionWait.rounded(.up)) + 10
-            list.append(Entry(event: "PreToolUse",
-                              matcher: config.permissionToolMatcher,
+            let matcher = config.permissionToolMatcher.isEmpty ? nil : config.permissionToolMatcher
+            list.append(Entry(event: "PermissionRequest",
+                              matcher: matcher,
                               mode: .ask,
                               timeout: timeout,
                               async: false))
-        } else {
-            list.append(Entry(event: "PreToolUse",
-                              matcher: config.permissionToolMatcher,
-                              mode: .event,
-                              timeout: 10,
-                              async: true))
         }
         return list
     }

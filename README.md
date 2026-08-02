@@ -7,7 +7,7 @@
 - Claude Code の hooks から状態を受け取る（ポーリングなし）
 - 完了・許可待ちで効果音＋ハイライト
 - 行クリックでそのターミナルアプリを前面に
-- 許可要求（`PreToolUse`）に notch から **許可 / 拒否** を返せる
+- 許可要求（`PermissionRequest`）に notch から **許可 / 拒否** を返せる（実際に許可を聞かれる場面でのみ表示）
 
 個人用 MVP です。着想は [vibeisland](https://vibeisland.app/) の「画面上部でエージェントを見張る」という発想のみ。コード・ブランド・アセットは一切無関係の独立実装です。
 
@@ -39,7 +39,7 @@ make status
 # socket:  /Users/you/.hinomi/hinomi.sock
 # 待ち受け: あり（アプリ起動中）
 # hooks:   導入済み (/Users/you/.claude/settings.json)
-# 許可UI:  有効 / 待ち 15秒 / matcher Bash|Edit|Write|MultiEdit|NotebookEdit
+# 許可UI:  有効 / 待ち 15秒 / matcher 全ツール
 ```
 
 ログイン時に自動起動させたいときは、システム設定 → 一般 → ログイン項目 に `~/Applications/hinomi.app` を追加してください。
@@ -59,7 +59,7 @@ make status
 
 ```
   Claude Code（セッションを何枚開いても可）
-    │  hooks: SessionStart / UserPromptSubmit / PreToolUse / Notification / Stop / SessionEnd
+    │  hooks: SessionStart / UserPromptSubmit / PreToolUse / Notification / Stop / SessionEnd / PermissionRequest
     ▼
   hinomi-hook（同梱の極小 CLI・約 400KB / 起動は数十ミリ秒）
     │   stdin の hook JSON に hinomi_* を足すだけ（元のフィールドは壊さない）
@@ -95,7 +95,7 @@ make status
 ./scripts/demo.sh          # 全部（3セッション → 実行中 → 完了 → 入力待ち → 許可要求 → Allow/Deny 実演）
 ./scripts/demo.sh basic    # セッション開始〜実行中〜完了
 ./scripts/demo.sh notify   # 入力待ち・許可要求（Notification 経由）
-./scripts/demo.sh ask      # PreToolUse の Allow/Deny（notch のボタンが出て、応答までブロックする）
+./scripts/demo.sh ask      # PermissionRequest の Allow/Deny（notch のボタンが出て、応答までブロックする）
 ./scripts/demo.sh clean    # デモ用セッションを一覧から消す
 ```
 
@@ -112,28 +112,27 @@ echo '{"session_id":"t1","cwd":"'$HOME'/work/hinomi","hook_event_name":"Stop"}' 
 
 ### 採った方式
 
-公式仕様（[Hooks reference](https://code.claude.com/docs/en/hooks) の *PreToolUse Decision Control* と *Timeout Defaults*）に基づき、**同期ブロックする `PreToolUse` フック**で実装しています。
+公式仕様（[Hooks reference](https://code.claude.com/docs/en/hooks) の *PermissionRequest* と *Timeout Defaults*）に基づき、**同期ブロックする `PermissionRequest` フック**で実装しています。`PermissionRequest` は**実際に許可判断が必要になった時だけ**発火するので、自動許可（bypassPermissions・acceptEdits・allowlist 済みコマンド等）で端末に何も出ない場面では notch にもボタンは出ません。
 
-1. `PreToolUse`（matcher: `Bash|Edit|Write|MultiEdit|NotebookEdit`）で `hinomi-hook ask` が起動
+1. `PermissionRequest`（既定は全ツール）で `hinomi-hook ask` が起動
 2. hook が socket 越しにアプリへ問い合わせ、**応答が来るまでブロック**（既定15秒・`settings.json` の `timeout` は待ち時間+10秒）
 3. notch に「許可 / 拒否」と残り秒数が出る
 4. 押されたら hook が stdout に返す:
    ```json
-   {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"hinomi: notch で選択"},"suppressOutput":true}
+   {"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}},"suppressOutput":true}
    ```
-5. 無応答のまま期限が来たら **何も出力せず exit 0**（decision なし）→ Claude Code は通常の許可フローに進む
+5. 無応答のまま期限が来たら **何も出力せず exit 0**（decision なし）→ Claude Code は通常の許可フロー（端末のプロンプト）に進む
 
-`permissionDecision` は公式に `allow | deny | ask | defer` が定義されています。hinomi は「無応答」を `defer` ではなく**出力なし**で表現しています（どのバージョンでも「decision なし」として確実に解釈されるため）。
+`PreToolUse` は監視専用（`async` の `event`）に降格しており、セッションを一切ブロックしません。旧構成（PreToolUse で ask）の settings.json が残っていても、`hinomi-hook` はイベント名を見て正しい出力形式（`permissionDecision`）を返します。
 
 ### 制約（承知して使うこと）
 
-- **`allow` は通常の許可プロンプトを飛ばします。** notch のボタンは、端末で `y` を押すのと同じ重みがあります。matcher を広げるほど誤クリックの影響が大きくなります
-- **待っている間、そのセッションは止まります**（最大 `permissionWaitSeconds` 秒）。既定を15秒に抑えているのはこのため。長くしたいなら `settings.json` 側の `timeout` も追随する必要があり、`install-hooks` が自動で計算します
+- **`allow` は通常の許可プロンプトを飛ばします。** notch のボタンは、端末で `y` を押すのと同じ重みがあります
+- **待っている間、端末側の許可プロンプトの表示が最大 `permissionWaitSeconds` 秒遅れます**（hook の応答を待ってから通常フローに進むため）。既定を15秒に抑えているのはこのため。端末で答えたい派なら短く（例 5 秒）するか `permissionPromptEnabled: false` に
 - **アプリが起動していなければ何も起きません。** socket が無い／接続できないときは即 exit 0 で無言終了し、通常フローに流れます。「hinomi が落ちていて Claude Code が止まる」ことはありません
-- **自動許可モードのセッションには尋ねません。** hook 入力の `permission_mode` が `bypassPermissions`（全ツール）／`acceptEdits`（編集系ツール）のときは、端末でも聞かれないので notch にもボタンを出さず即素通しします。ただし `settings.json` の allowlist で自動許可されるツールまでは事前に判別できず、その場合は「端末では聞かれないのに notch に出る」ことがあります（無応答のまま流せば実害なし）
 - **`Notification` 由来の許可待ち表示にはボタンが出ません。** これは端末側で既にプロンプトが出ている状態の通知なので、hinomi からは状態表示とジャンプのみ（決めるのは端末）
 - 他のフックが同じツールに `deny` を返した場合は deny が勝ちます（公式仕様どおり）
-- 許可 UI が煩わしければ `~/.hinomi/config.json` で `permissionPromptEnabled: false` にし、`hinomi install-hooks` を再実行してください。`PreToolUse` は監視専用（`event`）に切り替わります
+- 許可 UI が煩わしければ `~/.hinomi/config.json` で `permissionPromptEnabled: false` にし、`hinomi install-hooks` を再実行してください。`PermissionRequest` のエントリ自体が外れ、監視専用になります
 
 ## 設定 `~/.hinomi/config.json`
 
@@ -144,7 +143,7 @@ echo '{"session_id":"t1","cwd":"'$HOME'/work/hinomi","hook_event_name":"Stop"}' 
 | --- | --- | --- |
 | `permissionPromptEnabled` | `true` | notch から Allow/Deny を返す |
 | `permissionWaitSeconds` | `15` | 応答を待つ秒数（1〜120に丸める） |
-| `permissionToolMatcher` | `Bash\|Edit\|Write\|MultiEdit\|NotebookEdit` | 許可を尋ねる対象ツール |
+| `permissionToolMatcher` | （空 = 全ツール） | 許可を尋ねる対象ツール（Claude Code の matcher 記法） |
 | `doneSound` | `Glass` | 完了時の効果音（`/System/Library/Sounds` の名前・空文字で無音） |
 | `permissionSound` | （無音） | 許可待ち・入力待ちの効果音。`"Funk"` 等の NSSound 名で有効化 |
 | `autoExpandSeconds` | `6` | イベント時に自動展開しておく秒数 |

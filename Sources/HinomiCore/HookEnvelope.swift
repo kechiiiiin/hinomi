@@ -4,6 +4,14 @@ import Foundation
 ///
 /// 足すのは `hinomi_` 接頭辞のキーだけなので、元の hook JSON のフィールドは壊さない。
 public enum HookEnvelope {
+    /// stdin の hook JSON から hook_event_name だけを取り出す（出力形式の選択に使う）。
+    public static func eventName(stdin data: Data) -> String? {
+        guard let parsed = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return nil
+        }
+        return parsed["hook_event_name"] as? String
+    }
+
     public static func build(stdin data: Data,
                              mode: HookMessageMode,
                              config: HinomiConfig,

@@ -35,10 +35,25 @@ public struct PermissionReply: Equatable {
 
 /// hinomi-hook が stdout に出す Claude Code 向け JSON を組み立てる。
 ///
-/// 公式仕様（https://code.claude.com/docs/en/hooks の PreToolUse Decision Control）:
-/// `hookSpecificOutput.permissionDecision` に allow / deny / ask / defer を返す。
+/// 公式仕様（https://code.claude.com/docs/en/hooks）:
+/// - PermissionRequest Decision Control: `hookSpecificOutput.decision.behavior` に allow / deny
+/// - PreToolUse Decision Control: `hookSpecificOutput.permissionDecision` に allow / deny / ask / defer
 /// 無応答のときは **何も出力せず exit 0**（＝decision なし）とし、通常の許可フローに戻す。
 public enum HookOutput {
+    /// PermissionRequest 用。実際に許可を聞かれている場面での decision。
+    public static func permissionRequestJSON(answer: PermissionAnswer) -> String? {
+        guard answer != .none else { return nil }
+        let object: [String: Any] = [
+            "hookSpecificOutput": [
+                "hookEventName": "PermissionRequest",
+                "decision": ["behavior": answer.rawValue],
+            ],
+            "suppressOutput": true,
+        ]
+        return encode(object)
+    }
+
+    /// PreToolUse 用（旧方式の互換。settings.json に旧エントリが残っていても壊れないように）。
     public static func preToolUseJSON(answer: PermissionAnswer, reason: String) -> String? {
         guard answer != .none else { return nil }
         let object: [String: Any] = [
@@ -49,6 +64,10 @@ public enum HookOutput {
             ],
             "suppressOutput": true,
         ]
+        return encode(object)
+    }
+
+    private static func encode(_ object: [String: Any]) -> String? {
         guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else {
             return nil
         }

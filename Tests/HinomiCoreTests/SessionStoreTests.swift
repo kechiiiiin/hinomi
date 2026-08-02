@@ -57,24 +57,39 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(store.session(id: "s1")?.title, "タイトルを表示して")
     }
 
-    func testAskIsSuppressedInAutoPermissionModes() {
+    func testPermissionRequestAskCreatesPending() {
         let store = SessionStore()
-        // bypassPermissions は全ツール素通し
-        let bypass = store.apply(msg("""
-        {"session_id":"s6","hook_event_name":"PreToolUse","tool_name":"Bash",
-         "tool_input":{"command":"ls"},"permission_mode":"bypassPermissions","hinomi_mode":"ask"}
+        // 実際に許可を聞かれる場面でだけ発火する PermissionRequest が ask の正
+        let effect = store.apply(msg("""
+        {"session_id":"s6","hook_event_name":"PermissionRequest","tool_name":"WebFetch",
+         "tool_input":{"url":"https://example.com"},"hinomi_mode":"ask","hinomi_request_id":"r10","hinomi_wait_seconds":15}
         """))
-        XCTAssertEqual(bypass, .none)
-        XCTAssertEqual(store.session(id: "s6")?.state, .working)
-        XCTAssertNil(store.session(id: "s6")?.pending)
+        XCTAssertEqual(effect, .permissionRequested)
+        XCTAssertEqual(store.session(id: "s6")?.state, .awaitingPermission)
+        XCTAssertEqual(store.session(id: "s6")?.pending?.requestID, "r10")
+    }
 
-        // acceptEdits は編集系のみ素通し、Bash は尋ねる
-        let editSuppressed = store.apply(msg(#"{"session_id":"s7","hook_event_name":"PreToolUse","tool_name":"Edit","permission_mode":"acceptEdits","hinomi_mode":"ask"}"#))
-        XCTAssertEqual(editSuppressed, .none)
-        XCTAssertNil(store.session(id: "s7")?.pending)
-        let bashAsks = store.apply(msg(#"{"session_id":"s7","hook_event_name":"PreToolUse","tool_name":"Bash","permission_mode":"acceptEdits","hinomi_mode":"ask"}"#, offset: 1))
-        XCTAssertEqual(bashAsks, .permissionRequested)
-        XCTAssertNotNil(store.session(id: "s7")?.pending)
+    func testAppTitleWinsOverPromptTitle() {
+        let store = SessionStore()
+        store.apply(msg(#"{"session_id":"cli-1","cwd":"/w/jinsei","hook_event_name":"UserPromptSubmit","prompt":"変更した"}"#))
+        XCTAssertEqual(store.session(id: "cli-1")?.displayTitle, "変更した")
+        XCTAssertTrue(store.setAppTitles(["cli-1": "hinomi の改修"]))
+        XCTAssertEqual(store.session(id: "cli-1")?.displayTitle, "hinomi の改修")
+        // 同じ内容なら「変化なし」
+        XCTAssertFalse(store.setAppTitles(["cli-1": "hinomi の改修"]))
+    }
+
+    func testTitleLookupReadsDesktopSessionFiles() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("hinomi-title-tests-\(UUID().uuidString)/a/b")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir.deletingLastPathComponent().deletingLastPathComponent()) }
+        try Data(#"{"sessionId":"local_x","cliSessionId":"cli-9","title":"買い物リスト整理"}"#.utf8)
+            .write(to: dir.appendingPathComponent("local_x.json"))
+        try Data(#"{"cliSessionId":"","title":"無視される"}"#.utf8)
+            .write(to: dir.appendingPathComponent("local_y.json"))
+        let lookup = SessionTitleLookup(rootURL: dir.deletingLastPathComponent().deletingLastPathComponent())
+        XCTAssertEqual(lookup.titlesByCLISessionID(), ["cli-9": "買い物リスト整理"])
     }
 
     func testEventModePreToolUseDoesNotCreatePending() {

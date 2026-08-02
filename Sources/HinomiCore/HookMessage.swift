@@ -122,22 +122,6 @@ public struct HookMessage: Equatable {
         return toolName
     }
 
-    /// permission_mode がこのツールを自動許可する設定なら true。
-    /// その場合、端末側でも許可プロンプトは出ないので、notch で尋ねる意味がない。
-    /// （PreToolUse は許可判定より前に呼ばれるため、settings.json の allowlist までは判別できない）
-    public var isAutoApprovedByPermissionMode: Bool {
-        guard let permissionMode else { return false }
-        switch permissionMode {
-        case "bypassPermissions":
-            return true
-        case "acceptEdits":
-            guard let toolName else { return false }
-            return ["Edit", "Write", "MultiEdit", "NotebookEdit"].contains(toolName)
-        default:
-            return false
-        }
-    }
-
     /// Notification のうち、許可を求めているもの
     public var isPermissionNotification: Bool {
         guard kind == .notification else { return false }

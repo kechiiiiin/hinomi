@@ -41,13 +41,21 @@ case .ask:
     let result = SocketClient.send(payload, expectReply: true, timeout: wait + 2)
     guard case .delivered(let reply) = result,
           let reply,
-          let parsed = PermissionReply(data: reply),
-          let json = HookOutput.preToolUseJSON(
-              answer: parsed.answer,
-              reason: parsed.reason ?? "hinomi: notch で選択されました") else {
+          let parsed = PermissionReply(data: reply) else {
         // 無応答 / アプリ不在 → 何も出力しない（decision なし）＝通常の許可フローへ
         exit(0)
     }
-    print(json)
+    // 出力形式はイベントで変わる。正は PermissionRequest（実際に許可を聞かれている場面のみ発火）。
+    // PreToolUse は旧エントリが settings.json に残っていた場合の互換。
+    let eventName = HookEnvelope.eventName(stdin: stdinData) ?? "PermissionRequest"
+    let json: String?
+    if eventName == "PreToolUse" {
+        json = HookOutput.preToolUseJSON(
+            answer: parsed.answer,
+            reason: parsed.reason ?? "hinomi: notch で選択されました")
+    } else {
+        json = HookOutput.permissionRequestJSON(answer: parsed.answer)
+    }
+    if let json { print(json) }
     exit(0)
 }

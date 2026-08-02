@@ -21,6 +21,20 @@ final class HookOutputTests: XCTestCase {
     func testNoneProducesNoOutput() {
         // 無応答のときは何も出さない（＝decision なしで通常フローへ）
         XCTAssertNil(HookOutput.preToolUseJSON(answer: .none, reason: "無応答"))
+        XCTAssertNil(HookOutput.permissionRequestJSON(answer: .none))
+    }
+
+    func testPermissionRequestJSONMatchesOfficialShape() throws {
+        // 公式: hookSpecificOutput.decision.behavior に allow / deny
+        let json = try XCTUnwrap(HookOutput.permissionRequestJSON(answer: .allow))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        let specific = try XCTUnwrap(object["hookSpecificOutput"] as? [String: Any])
+        XCTAssertEqual(specific["hookEventName"] as? String, "PermissionRequest")
+        let decision = try XCTUnwrap(specific["decision"] as? [String: Any])
+        XCTAssertEqual(decision["behavior"] as? String, "allow")
+
+        let deny = try XCTUnwrap(HookOutput.permissionRequestJSON(answer: .deny))
+        XCTAssertTrue(deny.contains(#""behavior":"deny""#))
     }
 
     func testPermissionReplyRoundTrip() throws {

@@ -156,13 +156,13 @@ private struct SessionRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    // 見出しは「いま何をさせているか」（直近プロンプト）。無ければプロジェクト名
-                    Text(session.title ?? session.projectName)
+                    // 見出しはアプリのセッションタイトル > 直近プロンプト > プロジェクト名
+                    Text(session.displayTitle)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    if session.title != nil {
+                    if session.displayTitle != session.projectName {
                         Text(session.projectName)
                             .font(.system(size: 9))
                             .foregroundColor(Color(white: 0.5))

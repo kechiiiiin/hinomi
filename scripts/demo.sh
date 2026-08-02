@@ -4,7 +4,7 @@
 #   ./scripts/demo.sh          全部（3セッション分の一連の流れ → 許可待ちの実演）
 #   ./scripts/demo.sh basic    セッション開始〜実行中〜完了まで
 #   ./scripts/demo.sh notify   入力待ち・許可要求（Notification 経由）
-#   ./scripts/demo.sh ask      PreToolUse の Allow/Deny（notch のボタンが出る／応答を待つ）
+#   ./scripts/demo.sh ask      PermissionRequest の Allow/Deny（notch のボタンが出る／応答を待つ）
 #   ./scripts/demo.sh clean    デモ用セッションを一覧から消す
 set -uo pipefail
 
@@ -62,10 +62,10 @@ demo_notify() {
 }
 
 demo_ask() {
-  echo "==> PreToolUse (ask): notch に「許可 / 拒否」が出ます。押すか、放置してタイムアウトさせてください。"
+  echo "==> PermissionRequest (ask): notch に「許可 / 拒否」が出ます。押すか、放置してタイムアウトさせてください。"
   echo "    （このコマンドは応答が返るまでブロックします＝本番の hook と同じ挙動）"
   local out
-  out="$(TERM_PROGRAM="ghostty" send ask '{"session_id":"hinomi-demo-2","cwd":"'"$HOME"'/work/zaiko-watch","hook_event_name":"PreToolUse","tool_name":"Bash","tool_use_id":"toolu_demo","tool_input":{"command":"rm -rf ./build && npm run deploy"}}')"
+  out="$(TERM_PROGRAM="ghostty" send ask '{"session_id":"hinomi-demo-2","cwd":"'"$HOME"'/work/zaiko-watch","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_use_id":"toolu_demo","tool_input":{"command":"rm -rf ./build && npm run deploy"}}')"
   if [[ -z "$out" ]]; then
     echo "<-- 出力なし（decision なし＝通常の許可フローに流れる）"
   else

@@ -6,7 +6,7 @@ public struct HinomiConfig: Codable, Equatable {
     public var permissionPromptEnabled: Bool
     /// notch でクリックを待つ秒数。無応答なら decision を返さず通常フローへ流す
     public var permissionWaitSeconds: Double
-    /// Allow/Deny の対象ツール（Claude Code の matcher 記法）
+    /// Allow/Deny の対象ツール（Claude Code の matcher 記法）。空文字で全ツール（既定）
     public var permissionToolMatcher: String
     /// Stop（完了）時に鳴らす NSSound 名。空文字で無音
     public var doneSound: String
@@ -22,7 +22,7 @@ public struct HinomiConfig: Codable, Equatable {
     public static let `default` = HinomiConfig(
         permissionPromptEnabled: true,
         permissionWaitSeconds: 15,
-        permissionToolMatcher: "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        permissionToolMatcher: "",
         doneSound: "Glass",
         permissionSound: "",
         autoExpandSeconds: 6,

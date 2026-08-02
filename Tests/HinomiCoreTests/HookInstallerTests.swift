@@ -37,23 +37,32 @@ final class HookInstallerTests: XCTestCase {
 
         // hinomi の分が足されている
         XCTAssertTrue(stopCommands.contains("'\(hookPath)' event"))
-        XCTAssertEqual(commands(in: merged, event: "PreToolUse"), ["'\(hookPath)' ask"])
-        for event in ["SessionStart", "UserPromptSubmit", "Notification", "SessionEnd"] {
+        XCTAssertEqual(commands(in: merged, event: "PermissionRequest"), ["'\(hookPath)' ask"])
+        for event in ["SessionStart", "UserPromptSubmit", "Notification", "SessionEnd", "PreToolUse"] {
             XCTAssertEqual(commands(in: merged, event: event), ["'\(hookPath)' event"], event)
         }
     }
 
-    func testPreToolUseEntryUsesMatcherAndTimeout() throws {
+    func testPermissionRequestEntryUsesTimeoutAndNoMatcher() throws {
         let merged = HookInstaller.merged(into: [:], hookExecutable: hookPath, config: .default)
         let hooks = try XCTUnwrap(merged["hooks"] as? [String: Any])
-        let groups = try XCTUnwrap(hooks["PreToolUse"] as? [[String: Any]])
+        let groups = try XCTUnwrap(hooks["PermissionRequest"] as? [[String: Any]])
         XCTAssertEqual(groups.count, 1)
-        XCTAssertEqual(groups[0]["matcher"] as? String, HinomiConfig.default.permissionToolMatcher)
+        // 既定 matcher は空 = 全ツール（キー自体を出さない）
+        XCTAssertNil(groups[0]["matcher"])
         let inner = try XCTUnwrap(groups[0]["hooks"] as? [[String: Any]])
         XCTAssertEqual(inner[0]["type"] as? String, "command")
         // 待ち時間 + 余裕。async は付けない（応答を待つ必要があるため）
         XCTAssertEqual(inner[0]["timeout"] as? Int, Int(HinomiConfig.default.clampedPermissionWait) + 10)
         XCTAssertNil(inner[0]["async"])
+
+        // matcher を設定していればそのまま出す
+        var config = HinomiConfig.default
+        config.permissionToolMatcher = "Bash|Edit"
+        let custom = HookInstaller.merged(into: [:], hookExecutable: hookPath, config: config)
+        let customHooks = try XCTUnwrap(custom["hooks"] as? [String: Any])
+        let customGroups = try XCTUnwrap(customHooks["PermissionRequest"] as? [[String: Any]])
+        XCTAssertEqual(customGroups[0]["matcher"] as? String, "Bash|Edit")
 
         // イベント系は async: true（セッションを一切待たせない）
         let stopGroups = try XCTUnwrap(hooks["Stop"] as? [[String: Any]])
@@ -66,7 +75,8 @@ final class HookInstallerTests: XCTestCase {
         let once = HookInstaller.merged(into: [:], hookExecutable: hookPath, config: .default)
         let twice = HookInstaller.merged(into: once, hookExecutable: hookPath, config: .default)
         XCTAssertEqual(commands(in: twice, event: "Stop"), ["'\(hookPath)' event"])
-        XCTAssertEqual(commands(in: twice, event: "PreToolUse"), ["'\(hookPath)' ask"])
+        XCTAssertEqual(commands(in: twice, event: "PreToolUse"), ["'\(hookPath)' event"])
+        XCTAssertEqual(commands(in: twice, event: "PermissionRequest"), ["'\(hookPath)' ask"])
     }
 
     func testUninstallRemovesOnlyOurs() {
@@ -82,6 +92,7 @@ final class HookInstallerTests: XCTestCase {
         // hinomi 専用に作られたイベントはキーごと消える
         let hooks = cleaned["hooks"] as? [String: Any] ?? [:]
         XCTAssertNil(hooks["PreToolUse"])
+        XCTAssertNil(hooks["PermissionRequest"])
         XCTAssertNil(hooks["SessionStart"])
         XCTAssertNil(hooks["Notification"])
     }
@@ -107,7 +118,10 @@ final class HookInstallerTests: XCTestCase {
         var config = HinomiConfig.default
         config.permissionPromptEnabled = false
         let merged = HookInstaller.merged(into: [:], hookExecutable: hookPath, config: config)
+        // 監視用の PreToolUse は残り、PermissionRequest のエントリ自体が無くなる
         XCTAssertEqual(commands(in: merged, event: "PreToolUse"), ["'\(hookPath)' event"])
+        let hooks = merged["hooks"] as? [String: Any] ?? [:]
+        XCTAssertNil(hooks["PermissionRequest"])
     }
 
     // MARK: - 実ファイルへの書き込み（バックアップと非破壊性）

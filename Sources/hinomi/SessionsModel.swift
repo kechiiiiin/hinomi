@@ -20,6 +20,8 @@ final class SessionsModel: ObservableObject {
     private let store = SessionStore()
     private var answerHandlers: [String: (PermissionAnswer) -> Void] = [:]
     private var highlightClearWork: DispatchWorkItem?
+    private let titleLookup = SessionTitleLookup()
+    private var lastTitleRefresh = Date.distantPast
 
     init(config: HinomiConfig) {
         self.config = config
@@ -30,13 +32,7 @@ final class SessionsModel: ObservableObject {
     /// socket から届いたメッセージを反映する（main スレッドで呼ばれる）
     func handle(_ message: HookMessage, respond: @escaping (PermissionAnswer) -> Void) {
         if message.mode == .ask {
-            if message.isAutoApprovedByPermissionMode {
-                // 自動許可モード（bypassPermissions / acceptEdits の編集系）は端末でも聞かれない。
-                // 即「decision なし」を返してフックを待たせず、通常フローに流す。
-                respond(.none)
-            } else {
-                answerHandlers[message.requestID] = respond
-            }
+            answerHandlers[message.requestID] = respond
         }
         let effect = store.apply(message)
         if effect != .none {
@@ -70,6 +66,23 @@ final class SessionsModel: ObservableObject {
             answerHandlers.removeValue(forKey: requestID)?(.none)
         }
         refresh()
+        refreshAppTitlesIfNeeded()
+    }
+
+    /// デスクトップアプリのセッションタイトルを定期的に引き直す（ファイル数十件の走査なので軽い）
+    private func refreshAppTitlesIfNeeded() {
+        guard !store.ordered.isEmpty,
+              Date().timeIntervalSince(lastTitleRefresh) > 15 else { return }
+        lastTitleRefresh = Date()
+        let lookup = titleLookup
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let titles = lookup.titlesByCLISessionID()
+            guard !titles.isEmpty else { return }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if self.store.setAppTitles(titles) { self.refresh() }
+            }
+        }
     }
 
     func clearAll() {

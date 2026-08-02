@@ -56,12 +56,17 @@ public struct SessionInfo: Identifiable, Equatable {
     public var projectName: String
     /// 直近のユーザープロンプト（＝いま何をさせているか）。UserPromptSubmit で更新される。
     public var title: String?
+    /// Claude Code デスクトップアプリが付けたセッションタイトル（あれば最優先）
+    public var appTitle: String?
     public var termProgram: String?
     public var state: SessionState
     public var activity: String
     public var startedAt: Date
     public var lastEventAt: Date
     public var pending: PendingPermission?
+
+    /// 一覧の見出し。アプリのタイトル > 直近プロンプト > プロジェクト名
+    public var displayTitle: String { appTitle ?? title ?? projectName }
 
     public func elapsedText(now: Date = Date()) -> String {
         SessionInfo.elapsedText(seconds: now.timeIntervalSince(lastEventAt))
@@ -125,6 +130,7 @@ public final class SessionStore {
             cwd: message.cwd,
             projectName: message.projectName,
             title: nil,
+            appTitle: nil,
             termProgram: message.termProgram,
             state: .idle,
             activity: "セッション開始",
@@ -160,7 +166,7 @@ public final class SessionStore {
             }
 
         case .preToolUse:
-            if message.mode == .ask && !message.isAutoApprovedByPermissionMode {
+            if message.mode == .ask {
                 let summary = message.toolSummary ?? (message.toolName ?? "ツール")
                 info.pending = PendingPermission(
                     requestID: message.requestID,
@@ -211,6 +217,20 @@ public final class SessionStore {
 
         storage[message.sessionID] = info
         return effect
+    }
+
+    /// デスクトップアプリのタイトルを反映する。変化があれば true。
+    @discardableResult
+    public func setAppTitles(_ titles: [String: String]) -> Bool {
+        var changed = false
+        for (id, var info) in storage {
+            if let title = titles[id], info.appTitle != title {
+                info.appTitle = title
+                storage[id] = info
+                changed = true
+            }
+        }
+        return changed
     }
 
     /// notch でクリックされた／期限切れになったので Allow/Deny 表示を下げる。
