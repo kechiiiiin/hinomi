@@ -24,7 +24,8 @@
 必要なもの: macOS 14+、Swift ツールチェイン（Xcode か Command Line Tools: `xcode-select --install`）、Claude Code。
 
 ```bash
-git clone git@github.com:kechiiiiin/hinomi.git ~/work/hinomi
+gh auth login   # 未認証なら（kechiiiiin でブラウザ認証）
+gh repo clone kechiiiiin/hinomi ~/work/hinomi
 cd ~/work/hinomi
 
 make test            # ユニットテスト
