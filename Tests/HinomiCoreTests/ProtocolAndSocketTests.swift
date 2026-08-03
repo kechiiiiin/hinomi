@@ -56,6 +56,7 @@ final class HookEnvelopeTests: XCTestCase {
                                       config: .default,
                                       environment: ["TERM_PROGRAM": "ghostty", "TERM_SESSION_ID": "w0t1"],
                                       requestID: "req-42",
+                                      tty: "/dev/ttys004",
                                       now: Date(timeIntervalSince1970: 100))
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: built) as? [String: Any])
         XCTAssertEqual(object["session_id"] as? String, "s1")
@@ -65,6 +66,7 @@ final class HookEnvelopeTests: XCTestCase {
         XCTAssertEqual(object["hinomi_request_id"] as? String, "req-42")
         XCTAssertEqual(object["hinomi_term_program"] as? String, "ghostty")
         XCTAssertEqual(object["hinomi_term_session_id"] as? String, "w0t1")
+        XCTAssertEqual(object["hinomi_tty"] as? String, "/dev/ttys004")
         XCTAssertEqual(object["hinomi_wait_seconds"] as? Double, HinomiConfig.default.clampedPermissionWait)
         XCTAssertEqual(object["hinomi_sent_at"] as? Double, 100)
 
@@ -73,19 +75,22 @@ final class HookEnvelopeTests: XCTestCase {
         XCTAssertEqual(message.mode, .ask)
         XCTAssertEqual(message.termProgram, "ghostty")
         XCTAssertEqual(message.requestID, "req-42")
+        XCTAssertEqual(message.tty, "/dev/ttys004")
     }
 
     func testEventModeOmitsWaitSeconds() throws {
         let built = HookEnvelope.build(stdin: Data(#"{"hook_event_name":"Stop"}"#.utf8),
-                                      mode: .event, config: .default, environment: [:])
+                                      mode: .event, config: .default, environment: [:], tty: nil)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: built) as? [String: Any])
         XCTAssertNil(object["hinomi_wait_seconds"])
         XCTAssertNil(object["hinomi_term_program"])
+        // 端末を持たない起動（デスクトップアプリ等）では tty を付けない
+        XCTAssertNil(object["hinomi_tty"])
     }
 
     func testNonJSONStdinIsWrapped() throws {
         let built = HookEnvelope.build(stdin: Data("not json at all".utf8),
-                                      mode: .event, config: .default, environment: [:])
+                                      mode: .event, config: .default, environment: [:], tty: nil)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: built) as? [String: Any])
         XCTAssertEqual(object["hinomi_raw_stdin"] as? String, "not json at all")
         XCTAssertNotNil(HookMessage(jsonData: built))   // hinomi_mode があるので受け取れる

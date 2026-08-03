@@ -56,7 +56,10 @@ make status
 - 展開ヘッダ右端の **ピン**（📌）を押すと開いたまま固定されます。マウスを外しても、イベントが来ても畳みません。もう一度押すと解除（永続化しないので再起動で解けます）
 - 一覧の各行: タイトル／プロジェクト名／状態／最終イベントからの経過／ターミナル名／直近の活動
 - タイトルの優先順: **デスクトップアプリのセッションタイトル**（`~/Library/Application Support/Claude/claude-code-sessions` から `cliSessionId` で照合・15秒ごとに再取得）> 直近のユーザープロンプト > プロジェクト名。ターミナル起動のセッションはアプリのタイトルを持たないので、プロンプトが見出しになります
-- **行をクリック**すると、そのセッションのターミナルアプリが前面に出ます（iTerm2 / Terminal.app / Ghostty / WezTerm / kitty / Alacritty / Warp / Hyper / VS Code / Cursor）。タブ単位のジャンプはしません
+- **行をクリック**すると、そのセッションのターミナルへ跳びます（iTerm2 / Terminal.app / Ghostty / WezTerm / kitty / Alacritty / Warp / Hyper / VS Code / Cursor）
+  - **iTerm2 / Terminal.app は、そのセッションのタブ（iTerm2 はペイン）まで選びます。** hook プロセスの制御端末（`/dev/ttys003` 等）を控えておき、AppleScript で `tty` が一致するタブを選ぶ方式です
+  - **初回だけ「hinomi が iTerm2 を制御する許可」を聞かれます**（システム設定 → プライバシーとセキュリティ → オートメーション）。拒否しても壊れません——アプリを前面に出すだけの従来動作に静かに戻り、ログに1行残ります
+  - Ghostty / kitty / WezTerm / VS Code / Cursor など AppleScript で辿れない系はアプリのアクティベートまで。デスクトップアプリ版の Claude Code のように端末を持たないセッションも同じです
 - **完了・待機の行はマウスを乗せると右端に × が出て**、その1件だけ一覧から消せます（実行中・待たせている行には出ません）
 - 状態の色: 許可待ち=橙 / 入力待ち=黄 / 実行中=緑 / 完了=青 / 待機=灰
 - メニューバーの炎アイコンから、表示の切り替え・一覧のクリア・**効果音のオン/オフ**・**ログイン時に起動**・**表示するディスプレイの選択**（自動=マウスのある画面／特定の画面に固定。選んだ画面が外れている間は自動に戻る）・hooks の導入と除去・ログと設定ファイルを開けます
@@ -74,6 +77,7 @@ make status
     │     hinomi_mode        event | ask
     │     hinomi_request_id  1回の問い合わせを識別
     │     hinomi_term_program / hinomi_term_session_id   ← $TERM_PROGRAM から
+    │     hinomi_tty          制御端末（libproc で自分と祖先を辿る）← タブ単位のジャンプ用
     │     hinomi_wait_seconds（ask のときだけ）
     │
     │  AF_UNIX ストリーム  ~/.hinomi/hinomi.sock（0600）
@@ -187,8 +191,7 @@ hinomi version
 
 ## 見送ったもの（MVP スコープ外）
 
-- **タブ単位のジャンプ** — アプリのアクティベートまで。iTerm2/Ghostty はタブ復帰に AppleScript や独自 API が必要で、対応端末ごとに実装と権限が増えるため
-- **トークン使用量・コスト表示** — hooks の入力に含まれず、`transcript_path` の JSONL を常時追尾する必要があるため
+- **iTerm2 / Terminal.app 以外のタブ単位ジャンプ** — Ghostty / kitty / WezTerm は AppleScript の窓口を持たず、独自 API か CLI を端末ごとに実装することになるため。tty は控えてあるので、やる気になれば足せます
 - **セッションへの操作（プロンプト送信・中断）** — hooks は読み取りと許可判断の口であって、外部から入力を送る経路ではない
 - **ノッチ領域そのものへの描画（ノッチと一体化した見た目）** — 表示位置をメニューバー直下に統一し、ノッチ機/非ノッチ機で挙動を分けない方を選んだ
 - **公証（notarization）・自動更新** — 個人用のため ad-hoc 署名のみ

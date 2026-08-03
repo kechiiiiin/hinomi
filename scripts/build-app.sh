@@ -48,6 +48,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>一覧の行をクリックしたときに、そのセッションが動いているターミナルのタブへ切り替えるために使います。ターミナルの操作はタブの選択だけで、コマンドの実行や内容の読み取りは行いません。</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSSupportsAutomaticTermination</key>

@@ -59,6 +59,8 @@ public struct SessionInfo: Identifiable, Equatable {
     /// Claude Code デスクトップアプリが付けたセッションタイトル（あれば最優先）
     public var appTitle: String?
     public var termProgram: String?
+    /// そのセッションが動いている端末（`/dev/ttys003`）。タブ単位のジャンプに使う
+    public var tty: String?
     public var state: SessionState
     public var activity: String
     public var startedAt: Date
@@ -132,6 +134,7 @@ public final class SessionStore {
             title: nil,
             appTitle: nil,
             termProgram: message.termProgram,
+            tty: message.tty,
             state: .idle,
             activity: "セッション開始",
             startedAt: now,
@@ -145,6 +148,9 @@ public final class SessionStore {
         }
         if let term = message.termProgram, !term.isEmpty {
             info.termProgram = term
+        }
+        if let tty = message.tty, !tty.isEmpty {
+            info.tty = tty
         }
         info.lastEventAt = now
 

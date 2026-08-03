@@ -46,6 +46,8 @@ public struct HookMessage: Equatable {
     public var cwd: String?
     public var termProgram: String?
     public var termSessionID: String?
+    /// hook プロセスから見た制御端末（`/dev/ttys003`）。無いこともある
+    public var tty: String?
     public var toolName: String?
     public var toolCommand: String?
     public var toolFilePath: String?
@@ -81,6 +83,7 @@ public struct HookMessage: Equatable {
         cwd = HookMessage.string(object, "cwd")
         termProgram = HookMessage.string(object, "hinomi_term_program")
         termSessionID = HookMessage.string(object, "hinomi_term_session_id")
+        tty = HookMessage.string(object, "hinomi_tty")
         notificationType = HookMessage.string(object, "notification_type")
         prompt = HookMessage.string(object, "prompt")
         message = HookMessage.string(object, "message")

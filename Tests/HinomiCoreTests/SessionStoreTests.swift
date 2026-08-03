@@ -159,10 +159,11 @@ final class SessionStoreTests: XCTestCase {
 
     func testCwdAndTerminalAreRememberedAcrossEvents() {
         let store = SessionStore()
-        store.apply(msg(#"{"session_id":"s","cwd":"/w/hinomi","hook_event_name":"SessionStart","hinomi_term_program":"ghostty"}"#))
-        // 後続イベントに cwd / term が無くても保持される
+        store.apply(msg(#"{"session_id":"s","cwd":"/w/hinomi","hook_event_name":"SessionStart","hinomi_term_program":"ghostty","hinomi_tty":"/dev/ttys003"}"#))
+        // 後続イベントに cwd / term / tty が無くても保持される
         store.apply(msg(#"{"session_id":"s","hook_event_name":"Stop"}"#, offset: 1))
         XCTAssertEqual(store.session(id: "s")?.projectName, "hinomi")
         XCTAssertEqual(store.session(id: "s")?.termProgram, "ghostty")
+        XCTAssertEqual(store.session(id: "s")?.tty, "/dev/ttys003")
     }
 }

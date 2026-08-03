@@ -54,9 +54,9 @@ final class SessionsModel: ObservableObject {
         refresh()
     }
 
-    /// 行クリックでターミナルへ跳ぶ
+    /// 行クリックでターミナルへ跳ぶ（tty が分かっていればタブ／ペインまで）
     func jump(to session: SessionInfo) {
-        _ = TerminalJump.activate(termProgram: session.termProgram)
+        _ = TerminalJump.activate(termProgram: session.termProgram, tty: session.tty)
     }
 
     /// 毎秒の更新（経過時間の再描画・期限切れの掃除）

@@ -17,6 +17,7 @@ public enum HookEnvelope {
                              config: HinomiConfig,
                              environment: [String: String] = ProcessInfo.processInfo.environment,
                              requestID: String = UUID().uuidString,
+                             tty: String? = ControllingTTY.current(),
                              now: Date = Date()) -> Data {
         var object: [String: Any]
         if let parsed = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
@@ -35,6 +36,10 @@ public enum HookEnvelope {
         }
         if let session = environment["TERM_SESSION_ID"], !session.isEmpty {
             object["hinomi_term_session_id"] = session
+        }
+        // 制御端末（タブ単位のジャンプに使う）。端末を持たない起動では単に付かない
+        if let tty, !tty.isEmpty {
+            object["hinomi_tty"] = tty
         }
         if mode == .ask {
             object["hinomi_wait_seconds"] = config.clampedPermissionWait
