@@ -1,4 +1,4 @@
-.PHONY: help build debug test app install uninstall run install-hooks uninstall-hooks status demo clean
+.PHONY: help build debug test app install update uninstall run install-hooks uninstall-hooks status demo clean
 
 APP_DIR ?= $(HOME)/Applications
 APP := build/hinomi.app
@@ -11,6 +11,7 @@ help:
 	@echo "  make test             ユニットテスト（swift test）"
 	@echo "  make app              hinomi.app を組み立てて ad-hoc 署名"
 	@echo "  make install          $(APP_DIR) に hinomi.app を配置して起動"
+	@echo "  make update           git pull → test → install（更新はこれ一本で）"
 	@echo "  make install-hooks    ~/.claude/settings.json に hooks を非破壊マージ"
 	@echo "  make uninstall-hooks  追記した hooks を除去"
 	@echo "  make status           socket / hooks の状況を表示"
@@ -39,6 +40,13 @@ install: app
 	@open "$(INSTALLED)"
 	@echo "==> 起動しました（メニューバーの炎アイコン）"
 	@echo "    次に: make install-hooks"
+
+# 取り込み → 検証 → 入れ替えを一本にする。--ff-only なので、ローカルに
+# コミットが残っていれば pull で止まる（勝手に merge させない）
+update:
+	git pull --ff-only
+	$(MAKE) test
+	$(MAKE) install
 
 run: build
 	.build/release/hinomi

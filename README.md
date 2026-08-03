@@ -35,6 +35,8 @@ make install-hooks   # ~/.claude/settings.json に hooks を非破壊マージ
 
 `make install-hooks` の後、**既に開いている Claude Code は開き直してください**（hooks は起動時に読まれます）。
 
+更新するときは `make update`（`git pull --ff-only` → `make test` → `make install`）だけで済みます。
+
 状況確認:
 
 ```bash
