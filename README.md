@@ -8,6 +8,8 @@
 - 完了・許可待ちで効果音＋ハイライト
 - 行クリックでそのターミナルアプリを前面に
 - 許可要求（`PermissionRequest`）に notch から **許可 / 拒否** を返せる（実際に許可を聞かれる場面でのみ表示）
+- iTerm2 / Terminal.app は**そのセッションのタブまで**跳べる
+- 直近5時間・7日の**トークン使用量**を transcript から数えて表示
 
 個人用 MVP です。着想は [vibeisland](https://vibeisland.app/) の「画面上部でエージェントを見張る」という発想のみ。コード・ブランド・アセットは一切無関係の独立実装です。
 
@@ -61,6 +63,7 @@ make status
   - **初回だけ「hinomi が iTerm2 を制御する許可」を聞かれます**（システム設定 → プライバシーとセキュリティ → オートメーション）。拒否しても壊れません——アプリを前面に出すだけの従来動作に静かに戻り、ログに1行残ります
   - Ghostty / kitty / WezTerm / VS Code / Cursor など AppleScript で辿れない系はアプリのアクティベートまで。デスクトップアプリ版の Claude Code のように端末を持たないセッションも同じです
 - **完了・待機の行はマウスを乗せると右端に × が出て**、その1件だけ一覧から消せます（実行中・待たせている行には出ません）
+- 展開ヘッダの右に **使用量**（`5h 1.3M / 7d 13.3M`）が出ます。詳しくは下の「使用量表示」節
 - 状態の色: 許可待ち=橙 / 入力待ち=黄 / 実行中=緑 / 完了=青 / 待機=灰
 - メニューバーの炎アイコンから、表示の切り替え・一覧のクリア・**効果音のオン/オフ**・**ログイン時に起動**・**表示するディスプレイの選択**（自動=マウスのある画面／特定の画面に固定。選んだ画面が外れている間は自動に戻る）・hooks の導入と除去・ログと設定ファイルを開けます
 
@@ -146,6 +149,25 @@ echo '{"session_id":"t1","cwd":"'$HOME'/work/hinomi","hook_event_name":"Stop"}' 
 - 他のフックが同じツールに `deny` を返した場合は deny が勝ちます（公式仕様どおり）
 - 許可 UI が煩わしければ `~/.hinomi/config.json` で `permissionPromptEnabled: false` にし、`hinomi install-hooks` を再実行してください。`PermissionRequest` のエントリ自体が外れ、監視専用になります
 
+## 使用量表示（ローカル集計）
+
+展開ヘッダに `5h 1.3M / 7d 13.3M` のように、**直近5時間**と**直近7日**のトークン合計を出します。
+
+- **データ源は `~/.claude/projects/*/*.jsonl`（transcript）だけ。** Keychain・ネットワーク・OAuth トークンには一切触りません
+- したがってこれは **Claude 側の quota の残りではなく、手元のログから数えた使用量**です。プラン上限との対応は保証しません
+- 数えるのは `input_tokens + output_tokens + cache_creation_input_tokens`。**`cache_read_input_tokens` は除外**します（読ませただけの分なので）
+- 予算（`usageBudget5h` / `usageBudget7d`）を入れると、その窓だけ `5h 34%` の % 表示に変わります。0 なら実数のまま
+- 集計が0のうち（起動直後など）は表示せず、代わりに操作ヒントが出ます
+
+軽く保つための作り:
+
+1. **mtime が7日以内のファイルだけ**開く（それより古いファイルに窓内のデータは無い）
+2. ファイルごとに前回読んだオフセットを覚えて、**追記された分だけ**読む（書きかけの末尾行は次回に回す）
+3. 集計は**10分粒度のバケット**で持ち、窓から外れたバケットを捨てる（窓の境界は最大10分ぶん多めに出ます）
+4. 更新は**60秒ごと・background**。初回の全走査も background なので UI は待たされません（手元の実測: 22MB / 34ファイルで約 0.3 秒、以降の増分は 0.02 秒程度）
+
+再開・分岐で同じ行が別ファイルへ写ることがあるため、`uuid` で一度だけ数えます。
+
 ## 設定 `~/.hinomi/config.json`
 
 ファイルが無ければ既定値。一部のキーだけ書いても構いません（残りは既定値が使われます）。
@@ -163,6 +185,9 @@ echo '{"session_id":"t1","cwd":"'$HOME'/work/hinomi","hook_event_name":"Stop"}' 
 | `autoExpandSeconds` | `6` | イベント時に自動展開しておく秒数 |
 | `showWhenEmpty` | `false` | セッション0件でもピルを出す |
 | `doneRetentionMinutes` | `30` | 完了セッションを一覧に残す分数 |
+| `usageEnabled` | `true` | 展開ヘッダに使用量を出す（`false` で集計自体も止まる） |
+| `usageBudget5h` | `0`（未設定） | 直近5時間のトークン予算。入れると `5h 34%` の % 表示に切り替わる |
+| `usageBudget7d` | `0`（未設定） | 直近7日のトークン予算。同上 |
 
 ログは `~/.hinomi/hinomi.log`（512KB で自動ローテート）。
 
@@ -192,6 +217,7 @@ hinomi version
 ## 見送ったもの（MVP スコープ外）
 
 - **iTerm2 / Terminal.app 以外のタブ単位ジャンプ** — Ghostty / kitty / WezTerm は AppleScript の窓口を持たず、独自 API か CLI を端末ごとに実装することになるため。tty は控えてあるので、やる気になれば足せます
+- **quota の残量表示・コスト（円/ドル）換算** — 残量は Keychain の資格情報か API を叩かないと分からず、そこには触らない方針。単価もモデル・プランで変わるため、素のトークン数までにとどめた
 - **セッションへの操作（プロンプト送信・中断）** — hooks は読み取りと許可判断の口であって、外部から入力を送る経路ではない
 - **ノッチ領域そのものへの描画（ノッチと一体化した見た目）** — 表示位置をメニューバー直下に統一し、ノッチ機/非ノッチ機で挙動を分けない方を選んだ
 - **公証（notarization）・自動更新** — 個人用のため ad-hoc 署名のみ
@@ -199,10 +225,12 @@ hinomi version
 ## 開発
 
 ```
-Sources/HinomiCore/   Foundation のみ（イベントのパース・状態機械・socket・hooks 導入）
-Sources/hinomi/       AppKit + SwiftUI（notch パネル・メニューバー・CLI）
+Sources/HinomiCore/   Foundation のみ（イベントのパース・状態機械・socket・hooks 導入・
+                      制御端末の特定・AppleScript の組み立て・使用量の集計）
+Sources/hinomi/       AppKit + SwiftUI（notch パネル・メニューバー・CLI・ジャンプ）
 Sources/hinomi-hook/  hooks から呼ばれる極小クライアント
-Tests/HinomiCoreTests/  45 tests（パース・状態遷移・非破壊マージ・socket 往復）
+Tests/HinomiCoreTests/  71 tests（パース・状態遷移・非破壊マージ・socket 往復・
+                        AppleScript のエスケープ・使用量の窓と増分読み）
 ```
 
 UI を持たない部分は全部 `HinomiCore` に寄せてあるので、`swift test` だけで挙動を確かめられます。

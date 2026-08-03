@@ -3,7 +3,8 @@ import SwiftUI
 
 enum NotchLayout {
     static let collapsedSize = CGSize(width: 132, height: 26)
-    static let expandedWidth: CGFloat = 404
+    // ヘッダの使用量表示とピン、行の × を足したぶん少し広げた
+    static let expandedWidth: CGFloat = 432
     static let headerHeight: CGFloat = 28
     static let rowHeight: CGFloat = 56
     static let maxRows = 6
@@ -133,13 +134,27 @@ struct NotchView: View {
                 .font(.system(size: 10))
                 .foregroundColor(Color(white: 0.55))
             Spacer()
-            Text("行クリックでターミナルへ")
-                .font(.system(size: 9))
-                .foregroundColor(Color(white: 0.42))
+            if let usage = usageText {
+                Text(usage)
+                    .font(.system(size: 9, design: .rounded))
+                    .foregroundColor(Color(white: 0.52))
+                    .help("transcript から数えた直近のトークン量（入力+出力+キャッシュ書き込み）")
+            } else {
+                Text("行クリックでターミナルへ")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(white: 0.42))
+            }
             pinButton
         }
         .padding(.horizontal, 12)
         .frame(height: NotchLayout.headerHeight)
+    }
+
+    /// 集計が済んでいない（＝0）うちは出さない。予算が入っていればその窓だけ % 表示
+    private var usageText: String? {
+        guard model.config.usageEnabled, !model.usage.isZero else { return nil }
+        return model.usage.summaryText(budget5h: model.config.usageBudget5h,
+                                       budget7d: model.config.usageBudget7d)
     }
 
     /// ピン留め: ホバーが外れてもイベント後も開いたままにする

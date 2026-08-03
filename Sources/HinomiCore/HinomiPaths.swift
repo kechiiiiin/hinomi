@@ -43,6 +43,16 @@ public enum HinomiPaths {
             .appendingPathComponent("settings.json")
     }
 
+    /// Claude Code の transcript 置き場 `~/.claude/projects`（`HINOMI_CLAUDE_PROJECTS` で上書き可能）。
+    /// 使用量の集計はここの JSONL だけを読む
+    public static var claudeProjectsURL: URL {
+        if let override = environment["HINOMI_CLAUDE_PROJECTS"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+        return home.appendingPathComponent(".claude", isDirectory: true)
+            .appendingPathComponent("projects", isDirectory: true)
+    }
+
     @discardableResult
     public static func ensureStateDir() -> Bool {
         let fm = FileManager.default

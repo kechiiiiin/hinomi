@@ -11,6 +11,8 @@ final class SessionsModel: ObservableObject {
     @Published var pinned: Bool = false
     /// 直近のイベントで光らせるセッション
     @Published private(set) var highlighted: String?
+    /// transcript から数えたトークン使用量（60秒ごとに background で更新）
+    @Published private(set) var usage: UsageTotals = .zero
 
     let config: HinomiConfig
 
@@ -24,6 +26,11 @@ final class SessionsModel: ObservableObject {
     private var highlightClearWork: DispatchWorkItem?
     private let titleLookup = SessionTitleLookup()
     private var lastTitleRefresh = Date.distantPast
+    /// UsageTracker はスレッドセーフではないので、このキューの中だけで触る
+    private let usageTracker = UsageTracker()
+    private let usageQueue = DispatchQueue(label: "app.hinomi.usage", qos: .utility)
+    private var lastUsageRefresh = Date.distantPast
+    private var usageRefreshing = false
 
     init(config: HinomiConfig) {
         self.config = config
@@ -69,6 +76,23 @@ final class SessionsModel: ObservableObject {
         }
         refresh()
         refreshAppTitlesIfNeeded()
+        refreshUsageIfNeeded()
+    }
+
+    /// 使用量の集計は 60 秒ごと・background で。初回の全走査も含めて UI を待たせない
+    private func refreshUsageIfNeeded() {
+        guard config.usageEnabled, !usageRefreshing,
+              Date().timeIntervalSince(lastUsageRefresh) > 60 else { return }
+        lastUsageRefresh = Date()
+        usageRefreshing = true
+        usageQueue.async { [weak self] in
+            guard let self else { return }
+            let totals = self.usageTracker.refresh()
+            DispatchQueue.main.async {
+                self.usageRefreshing = false
+                if self.usage != totals { self.usage = totals }
+            }
+        }
     }
 
     /// デスクトップアプリのセッションタイトルを定期的に引き直す（ファイル数十件の走査なので軽い）

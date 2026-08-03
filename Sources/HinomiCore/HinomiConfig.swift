@@ -22,6 +22,12 @@ public struct HinomiConfig: Codable, Equatable {
     public var doneRetentionMinutes: Double
     /// オーバーレイを出すディスプレイ名（NSScreen.localizedName）。空文字で自動（マウスのある画面）
     public var preferredDisplay: String
+    /// 展開ヘッダにトークン使用量（transcript のローカル集計）を出すか
+    public var usageEnabled: Bool
+    /// 直近5時間のトークン予算。0 で未設定（実数のまま表示し、%にしない）
+    public var usageBudget5h: Double
+    /// 直近7日のトークン予算。0 で未設定
+    public var usageBudget7d: Double
 
     public static let `default` = HinomiConfig(
         permissionPromptEnabled: true,
@@ -33,7 +39,10 @@ public struct HinomiConfig: Codable, Equatable {
         autoExpandSeconds: 6,
         showWhenEmpty: false,
         doneRetentionMinutes: 30,
-        preferredDisplay: ""
+        preferredDisplay: "",
+        usageEnabled: true,
+        usageBudget5h: 0,
+        usageBudget7d: 0
     )
 
     public init(permissionPromptEnabled: Bool,
@@ -45,7 +54,10 @@ public struct HinomiConfig: Codable, Equatable {
                 autoExpandSeconds: Double,
                 showWhenEmpty: Bool,
                 doneRetentionMinutes: Double,
-                preferredDisplay: String = "") {
+                preferredDisplay: String = "",
+                usageEnabled: Bool = true,
+                usageBudget5h: Double = 0,
+                usageBudget7d: Double = 0) {
         self.permissionPromptEnabled = permissionPromptEnabled
         self.permissionWaitSeconds = permissionWaitSeconds
         self.permissionToolMatcher = permissionToolMatcher
@@ -56,6 +68,9 @@ public struct HinomiConfig: Codable, Equatable {
         self.showWhenEmpty = showWhenEmpty
         self.doneRetentionMinutes = doneRetentionMinutes
         self.preferredDisplay = preferredDisplay
+        self.usageEnabled = usageEnabled
+        self.usageBudget5h = usageBudget5h
+        self.usageBudget7d = usageBudget7d
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -63,6 +78,7 @@ public struct HinomiConfig: Codable, Equatable {
         case doneSound, permissionSound, soundsEnabled
         case autoExpandSeconds, showWhenEmpty, doneRetentionMinutes
         case preferredDisplay
+        case usageEnabled, usageBudget5h, usageBudget7d
     }
 
     public init(from decoder: Decoder) throws {
@@ -78,6 +94,9 @@ public struct HinomiConfig: Codable, Equatable {
         showWhenEmpty = try c.decodeIfPresent(Bool.self, forKey: .showWhenEmpty) ?? d.showWhenEmpty
         doneRetentionMinutes = try c.decodeIfPresent(Double.self, forKey: .doneRetentionMinutes) ?? d.doneRetentionMinutes
         preferredDisplay = try c.decodeIfPresent(String.self, forKey: .preferredDisplay) ?? d.preferredDisplay
+        usageEnabled = try c.decodeIfPresent(Bool.self, forKey: .usageEnabled) ?? d.usageEnabled
+        usageBudget5h = try c.decodeIfPresent(Double.self, forKey: .usageBudget5h) ?? d.usageBudget5h
+        usageBudget7d = try c.decodeIfPresent(Double.self, forKey: .usageBudget7d) ?? d.usageBudget7d
     }
 
     /// 待ち時間は 1〜120 秒に丸める（フックを不用意に長く止めない）
