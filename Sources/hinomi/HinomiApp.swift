@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var timer: Timer?
     /// チェックマークをメニューを開くたびに合わせ直すので、項目を持っておく
     private var soundsItem: NSMenuItem?
+    private var loginItem: NSMenuItem?
 
     override init() {
         config = HinomiConfig.load()
@@ -118,6 +119,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sounds.state = config.soundsEnabled ? .on : .off
         menu.addItem(sounds)
         soundsItem = sounds
+        let login = makeItem("ログイン時に起動", #selector(toggleLoginItem))
+        login.state = LoginItem.isEnabled ? .on : .off
+        menu.addItem(login)
+        loginItem = login
         let displayItem = NSMenuItem(title: "表示するディスプレイ", action: nil, keyEquivalent: "")
         let displayMenu = NSMenu(title: "表示するディスプレイ")
         displayMenu.delegate = self   // 開くたびに接続中の画面一覧で作り直す
@@ -144,8 +149,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu.title == "表示するディスプレイ" else {
-            // ルートメニュー: 設定ファイルを直接書き換えられている可能性もあるので毎回合わせる
+            // ルートメニュー: 設定ファイルやシステム設定を直接触られている可能性もあるので毎回合わせる
             soundsItem?.state = config.soundsEnabled ? .on : .off
+            loginItem?.state = LoginItem.isEnabled ? .on : .off
             return
         }
         menu.removeAllItems()
@@ -198,6 +204,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try config.save()
         } catch {
             alert(title: "設定を保存できませんでした", body: error.localizedDescription)
+        }
+    }
+
+    @objc private func toggleLoginItem() {
+        let wanted = !LoginItem.isEnabled
+        do {
+            try LoginItem.setEnabled(wanted)
+            loginItem?.state = LoginItem.isEnabled ? .on : .off
+            HinomiLog.write("ログイン項目: \(wanted ? "登録" : "解除") → \(LoginItem.statusDescription)")
+            if wanted, LoginItem.requiresApproval {
+                alert(title: "承認が必要です",
+                      body: """
+                      登録しましたが、システム設定でオフになっています。
+                      システム設定 → 一般 → ログイン項目 で hinomi を有効にしてください。
+                      """)
+            }
+        } catch {
+            HinomiLog.write("ログイン項目の変更に失敗: \(error.localizedDescription)")
+            alert(title: "ログイン時の起動を変更できませんでした",
+                  body: """
+                  \(error.localizedDescription)
+
+                  現在の状態: \(LoginItem.statusDescription)
+                  ~/Applications/hinomi.app として起動している必要があります（make install）。
+                  """)
         }
     }
 
