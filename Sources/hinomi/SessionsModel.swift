@@ -7,6 +7,8 @@ final class SessionsModel: ObservableObject {
     @Published private(set) var sessions: [SessionInfo] = []
     @Published private(set) var now: Date = Date()
     @Published var expanded: Bool = false
+    /// ピン留め中は、ホバーが外れてもイベント後も畳まない（永続化しない＝再起動で解除）
+    @Published var pinned: Bool = false
     /// 直近のイベントで光らせるセッション
     @Published private(set) var highlighted: String?
 

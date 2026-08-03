@@ -87,6 +87,7 @@ final class NotchController {
     func setHidden(_ value: Bool) {
         hidden = value
         if value {
+            model.pinned = false   // 隠すときはピンも解く（次に出したとき固まって見えないように）
             setExpanded(false)
             panel.orderOut(nil)
         } else {
@@ -160,8 +161,9 @@ final class NotchController {
         collapseWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            // マウスがまだ乗っているなら畳まない
-            if self.panel.frame.contains(NSEvent.mouseLocation) {
+            // ピン留め中／マウスがまだ乗っているなら畳まない。
+            // 畳まずに再スケジュールしておくので、ピンを外せば次の回で自然に畳まれる
+            if self.model.pinned || self.panel.frame.contains(NSEvent.mouseLocation) {
                 self.scheduleCollapse(after: 0.6)
                 return
             }

@@ -136,9 +136,28 @@ struct NotchView: View {
             Text("行クリックでターミナルへ")
                 .font(.system(size: 9))
                 .foregroundColor(Color(white: 0.42))
+            pinButton
         }
         .padding(.horizontal, 12)
         .frame(height: NotchLayout.headerHeight)
+    }
+
+    /// ピン留め: ホバーが外れてもイベント後も開いたままにする
+    private var pinButton: some View {
+        Button {
+            model.pinned.toggle()
+        } label: {
+            Image(systemName: model.pinned ? "pin.fill" : "pin")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(model.pinned
+                                 ? Color(red: 1.0, green: 0.58, blue: 0.20)
+                                 : Color(white: 0.5))
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(Color.white.opacity(model.pinned ? 0.14 : 0.07)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(model.pinned ? "ピンを外す" : "開いたままにする")
     }
 }
 
