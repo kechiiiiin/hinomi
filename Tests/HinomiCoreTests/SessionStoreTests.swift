@@ -108,6 +108,20 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(store.session(id: "s4")?.state, .working)
     }
 
+    func testRemoveSingleSession() {
+        let store = SessionStore()
+        store.apply(msg(#"{"session_id":"keep","hook_event_name":"UserPromptSubmit"}"#))
+        store.apply(msg(#"{"session_id":"gone","hook_event_name":"Stop"}"#, offset: 1))
+
+        XCTAssertTrue(store.remove(sessionID: "gone"))
+        XCTAssertNil(store.session(id: "gone"))
+        XCTAssertNotNil(store.session(id: "keep"))
+        XCTAssertEqual(store.count, 1)
+        // 居ないものを消しても壊れない
+        XCTAssertFalse(store.remove(sessionID: "gone"))
+        XCTAssertFalse(store.remove(sessionID: "知らない"))
+    }
+
     func testTidyExpiresPendingAndDropsOldSessions() {
         let store = SessionStore()
         store.apply(msg(#"{"session_id":"a","hook_event_name":"PreToolUse","tool_name":"Bash","hinomi_mode":"ask","hinomi_request_id":"rr","hinomi_wait_seconds":10}"#))

@@ -85,6 +85,16 @@ final class SessionsModel: ObservableObject {
         }
     }
 
+    /// 完了・待機の行の × が押された（見終わったものを1件だけ片付ける）
+    func remove(session: SessionInfo) {
+        // 許可待ちのまま消すとフック側が待ち続けるので、先に「決めなかった」を返す
+        if let pending = session.pending {
+            answerHandlers.removeValue(forKey: pending.requestID)?(.none)
+        }
+        store.remove(sessionID: session.id)
+        refresh()
+    }
+
     func clearAll() {
         store.removeAll()
         answerHandlers.removeAll()

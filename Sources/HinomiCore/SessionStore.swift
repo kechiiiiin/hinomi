@@ -265,5 +265,11 @@ public final class SessionStore {
         return expired
     }
 
+    /// 1件だけ一覧から消す（notch の × ボタン）。消せたら true。
+    @discardableResult
+    public func remove(sessionID: String) -> Bool {
+        storage.removeValue(forKey: sessionID) != nil
+    }
+
     public func removeAll() { storage.removeAll() }
 }

@@ -142,11 +142,38 @@ struct NotchView: View {
     }
 }
 
+/// 非アクティブなパネルでもホバーを拾うための下敷き。
+///
+/// SwiftUI の `.onHover` はアクティブなウィンドウ前提の tracking area を張るため、
+/// `.nonactivatingPanel` の上では反応しないことがある。パネル本体と同じ
+/// `.activeAlways` な NSView（TrackingContainerView）を敷いて自前で拾う。
+private struct HoverArea: NSViewRepresentable {
+    var onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> TrackingContainerView {
+        let view = TrackingContainerView()
+        view.onEnter = { onChange(true) }
+        view.onExit = { onChange(false) }
+        return view
+    }
+
+    func updateNSView(_ view: TrackingContainerView, context: Context) {
+        view.onEnter = { onChange(true) }
+        view.onExit = { onChange(false) }
+    }
+}
+
 private struct SessionRow: View {
     let session: SessionInfo
     @ObservedObject var model: SessionsModel
+    @State private var hovering = false
 
     private var isHighlighted: Bool { model.highlighted == session.id }
+
+    /// 見終わったものだけ消せる（実行中・待たせているものは残す）
+    private var isRemovable: Bool {
+        session.state == .done || session.state == .idle
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -197,6 +224,23 @@ private struct SessionRow: View {
                         .truncationMode(.middle)
                 }
             }
+
+            // 消せる行だけ、ホバー中に × を出す（場所は常に確保して行が動かないように）
+            if isRemovable {
+                Button {
+                    model.remove(session: session)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(Color(white: 0.78))
+                        .frame(width: 15, height: 15)
+                        .background(Circle().fill(Color.white.opacity(0.14)))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .opacity(hovering ? 1 : 0)
+                .allowsHitTesting(hovering)
+            }
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,6 +249,7 @@ private struct SessionRow: View {
                 .fill(isHighlighted ? session.state.tint.opacity(0.13) : Color.clear)
                 .padding(.horizontal, 6)
         )
+        .background(HoverArea { hovering = $0 })
         .contentShape(Rectangle())
         .onTapGesture { model.jump(to: session) }
     }
