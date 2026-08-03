@@ -33,7 +33,10 @@ public enum ControllingTTY {
     /// dev_t → `/dev/ttys003`。端末を持たないプロセスは NODEV（-1）や 0 になる。
     private static func devicePath(forDev dev: UInt32) -> String? {
         guard dev != 0, dev != UInt32(bitPattern: -1) else { return nil }
-        guard let name = devname(dev_t(dev), S_IFCHR) else { return nil }
+        // dev_t は Int32。Int32.max 超の dev 番号で dev_t(dev) が trap する（hook をクラッシュさせ得る）
+        // ため、範囲外は「端末なし」として静かに諦める
+        guard let devT = dev_t(exactly: dev) else { return nil }
+        guard let name = devname(devT, S_IFCHR) else { return nil }
         let path = "/dev/" + String(cString: name)
         return TerminalJumpScript.isPlausibleTTY(path) ? path : nil
     }

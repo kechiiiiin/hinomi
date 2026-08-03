@@ -123,6 +123,8 @@ final class SessionsModel: ObservableObject {
 
     func clearAll() {
         store.removeAll()
+        // 待機中の hook をタイムアウトまで待たせず、即「decision なし」で通常フローへ返す
+        for (_, respond) in answerHandlers { respond(.none) }
         answerHandlers.removeAll()
         refresh()
     }

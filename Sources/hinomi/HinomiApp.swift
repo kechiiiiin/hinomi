@@ -208,7 +208,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLoginItem() {
-        let wanted = !LoginItem.isEnabled
+        // requiresApproval（登録済みだがシステム設定でオフ）から再 register しても進まないので、
+        // その状態でのクリックは「解除」に倒す
+        let wanted = !(LoginItem.isEnabled || LoginItem.requiresApproval)
         do {
             try LoginItem.setEnabled(wanted)
             loginItem?.state = LoginItem.isEnabled ? .on : .off

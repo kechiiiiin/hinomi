@@ -24,11 +24,14 @@ public struct UsageTotals: Equatable {
         return "\(Int((Double(tokens) / budget * 100).rounded()))%"
     }
 
-    /// 12.3M / 845k / 512
+    /// 12.3M / 845k / 1.5k / 512
     public static func compact(_ tokens: Int) -> String {
         let value = Double(tokens)
-        if value >= 1_000_000 { return String(format: "%.1fM", value / 1_000_000) }
-        if value >= 1_000 { return String(format: "%.0fk", value / 1_000) }
+        // 999,500 以上は "%.1fM" が 1.0M 以上になる（"1000k" を出さないための境界）
+        if value >= 999_500 { return String(format: "%.1fM", value / 1_000_000) }
+        // 10k 未満は1桁小数（1,500 を "2k" にしない）。以上は整数 k で十分な精度
+        if value >= 9_950 { return String(format: "%.0fk", value / 1_000) }
+        if value >= 1_000 { return String(format: "%.1fk", value / 1_000) }
         return "\(tokens)"
     }
 }
@@ -78,10 +81,11 @@ public final class UsageTracker {
     /// 追記分だけ読んで集計を更新する。初回は窓の内側のファイルを頭から読む（数秒かかりうる）。
     @discardableResult
     public func refresh(now: Date = Date()) -> UsageTotals {
-        for url in candidateFiles(now: now) {
+        let files = candidateFiles(now: now)
+        for url in files {
             ingest(fileAt: url)
         }
-        prune(now: now)
+        prune(now: now, activePaths: Set(files.map(\.path)))
         return totals(now: now)
     }
 
@@ -191,9 +195,13 @@ public final class UsageTracker {
         Int((date.timeIntervalSince1970 / bucketSeconds).rounded(.down))
     }
 
-    private func prune(now: Date) {
+    private func prune(now: Date, activePaths: Set<String>? = nil) {
         let cutoff = bucketKey(for: now.addingTimeInterval(-UsageTracker.window7d))
         buckets = buckets.filter { $0.key >= cutoff }
         seenByBucket = seenByBucket.filter { $0.key >= cutoff }
+        // 窓から外れたファイルのオフセット記憶も落とす（常駐で無限成長させない）
+        if let activePaths {
+            cursors = cursors.filter { activePaths.contains($0.key) }
+        }
     }
 }

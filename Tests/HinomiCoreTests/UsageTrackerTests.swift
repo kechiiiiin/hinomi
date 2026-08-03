@@ -158,8 +158,10 @@ final class UsageTrackerTests: XCTestCase {
     func testCompactFormatting() {
         XCTAssertEqual(UsageTotals.compact(0), "0")
         XCTAssertEqual(UsageTotals.compact(512), "512")
-        XCTAssertEqual(UsageTotals.compact(1_500), "2k")
+        XCTAssertEqual(UsageTotals.compact(1_500), "1.5k")   // 10k 未満は1桁小数（"2k" と過大に見せない）
+        XCTAssertEqual(UsageTotals.compact(12_345), "12k")
         XCTAssertEqual(UsageTotals.compact(845_000), "845k")
+        XCTAssertEqual(UsageTotals.compact(999_600), "1.0M") // "1000k" にしない
         XCTAssertEqual(UsageTotals.compact(12_345_678), "12.3M")
     }
 

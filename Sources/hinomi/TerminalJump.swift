@@ -10,6 +10,8 @@ import HinomiCore
 enum TerminalJump {
     /// NSAppleScript はスレッドセーフではないので、実行はこの直列キューに閉じる。
     /// （UI スレッドで走らせると、権限ダイアログや遅い端末で notch が固まる）
+    /// 注: NSAppleScript を「main のみ」と読む解釈も世間にはある。直列キューに閉じれば
+    /// Apple のスレッド安全性分類（同時1スレッド）は満たすが、稀な不具合報告があることは承知の上のトレードオフ。
     private static let scriptQueue = DispatchQueue(label: "app.hinomi.applescript")
 
     @discardableResult
@@ -21,8 +23,14 @@ enum TerminalJump {
 
         if let tty, let source = TerminalJumpScript.script(bundleID: terminal.bundleID, tty: tty) {
             scriptQueue.async {
-                if runAppleScript(source) { return }
-                HinomiLog.write("jump: \(terminal.displayName) のタブ選択に失敗（オートメーション権限の可能性）。アプリのアクティベートに退避 tty=\(tty)")
+                switch runAppleScript(source) {
+                case .selected:
+                    return
+                case .notFound:
+                    HinomiLog.write("jump: \(terminal.displayName) に tty=\(tty) のタブが見つからず。アプリのアクティベートに退避")
+                case .scriptError:
+                    HinomiLog.write("jump: \(terminal.displayName) の AppleScript 実行に失敗（オートメーション権限拒否の可能性）。アプリのアクティベートに退避 tty=\(tty)")
+                }
                 DispatchQueue.main.async { _ = activateApp(terminal) }
             }
             return true
@@ -31,16 +39,21 @@ enum TerminalJump {
         return activateApp(terminal)
     }
 
-    /// tty が一致するタブが見つかって選べたら true
-    private static func runAppleScript(_ source: String) -> Bool {
-        guard let script = NSAppleScript(source: source) else { return false }
+    private enum ScriptOutcome {
+        case selected     // tty が一致するタブを選べた
+        case notFound     // 実行はできたが一致するタブが無かった
+        case scriptError  // 実行自体が失敗（権限拒否・構文など）
+    }
+
+    private static func runAppleScript(_ source: String) -> ScriptOutcome {
+        guard let script = NSAppleScript(source: source) else { return .scriptError }
         var error: NSDictionary?
         let result = script.executeAndReturnError(&error)
         if let error {
             HinomiLog.write("jump: AppleScript エラー \(error[NSAppleScript.errorNumber] ?? "?") \(error[NSAppleScript.errorMessage] ?? "")")
-            return false
+            return .scriptError
         }
-        return result.booleanValue
+        return result.booleanValue ? .selected : .notFound
     }
 
     @discardableResult
