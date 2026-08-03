@@ -175,7 +175,8 @@ final class NotchController {
 }
 
 /// ホバーを拾うだけの NSView。アプリが非アクティブでも反応させるため `.activeAlways`。
-final class TrackingContainerView: NSView {
+/// （行のホバー検知でも使うので継承を許してある: NotchView の PassthroughTrackingView）
+class TrackingContainerView: NSView {
     var onEnter: (() -> Void)?
     var onExit: (() -> Void)?
 

@@ -184,17 +184,23 @@ struct NotchView: View {
 private struct HoverArea: NSViewRepresentable {
     var onChange: (Bool) -> Void
 
-    func makeNSView(context: Context) -> TrackingContainerView {
-        let view = TrackingContainerView()
+    func makeNSView(context: Context) -> PassthroughTrackingView {
+        let view = PassthroughTrackingView()
         view.onEnter = { onChange(true) }
         view.onExit = { onChange(false) }
         return view
     }
 
-    func updateNSView(_ view: TrackingContainerView, context: Context) {
+    func updateNSView(_ view: PassthroughTrackingView, context: Context) {
         view.onEnter = { onChange(true) }
         view.onExit = { onChange(false) }
     }
+}
+
+/// 拾うのはホバーだけ。クリックは SwiftUI 側（行のタップ・× ボタン）に通すため
+/// hitTest から自分を外す。tracking area は hitTest とは無関係に届く。
+private final class PassthroughTrackingView: TrackingContainerView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 private struct SessionRow: View {
