@@ -12,6 +12,8 @@ public struct HinomiConfig: Codable, Equatable {
     public var doneSound: String
     /// 許可待ち発生時に鳴らす NSSound 名。空文字で無音（既定。うるさいため 2026-08-02 に無音化）
     public var permissionSound: String
+    /// 効果音を鳴らすか。false ならどの音も鳴らさない（doneSound 等の設定は保ったまま黙らせる）
+    public var soundsEnabled: Bool
     /// イベント発生時に自動展開しておく秒数
     public var autoExpandSeconds: Double
     /// セッションが無いときも畳んだ表示を出しておくか
@@ -27,6 +29,7 @@ public struct HinomiConfig: Codable, Equatable {
         permissionToolMatcher: "",
         doneSound: "Glass",
         permissionSound: "",
+        soundsEnabled: true,
         autoExpandSeconds: 6,
         showWhenEmpty: false,
         doneRetentionMinutes: 30,
@@ -38,6 +41,7 @@ public struct HinomiConfig: Codable, Equatable {
                 permissionToolMatcher: String,
                 doneSound: String,
                 permissionSound: String,
+                soundsEnabled: Bool = true,
                 autoExpandSeconds: Double,
                 showWhenEmpty: Bool,
                 doneRetentionMinutes: Double,
@@ -47,6 +51,7 @@ public struct HinomiConfig: Codable, Equatable {
         self.permissionToolMatcher = permissionToolMatcher
         self.doneSound = doneSound
         self.permissionSound = permissionSound
+        self.soundsEnabled = soundsEnabled
         self.autoExpandSeconds = autoExpandSeconds
         self.showWhenEmpty = showWhenEmpty
         self.doneRetentionMinutes = doneRetentionMinutes
@@ -55,7 +60,8 @@ public struct HinomiConfig: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case permissionPromptEnabled, permissionWaitSeconds, permissionToolMatcher
-        case doneSound, permissionSound, autoExpandSeconds, showWhenEmpty, doneRetentionMinutes
+        case doneSound, permissionSound, soundsEnabled
+        case autoExpandSeconds, showWhenEmpty, doneRetentionMinutes
         case preferredDisplay
     }
 
@@ -67,6 +73,7 @@ public struct HinomiConfig: Codable, Equatable {
         permissionToolMatcher = try c.decodeIfPresent(String.self, forKey: .permissionToolMatcher) ?? d.permissionToolMatcher
         doneSound = try c.decodeIfPresent(String.self, forKey: .doneSound) ?? d.doneSound
         permissionSound = try c.decodeIfPresent(String.self, forKey: .permissionSound) ?? d.permissionSound
+        soundsEnabled = try c.decodeIfPresent(Bool.self, forKey: .soundsEnabled) ?? d.soundsEnabled
         autoExpandSeconds = try c.decodeIfPresent(Double.self, forKey: .autoExpandSeconds) ?? d.autoExpandSeconds
         showWhenEmpty = try c.decodeIfPresent(Bool.self, forKey: .showWhenEmpty) ?? d.showWhenEmpty
         doneRetentionMinutes = try c.decodeIfPresent(Double.self, forKey: .doneRetentionMinutes) ?? d.doneRetentionMinutes

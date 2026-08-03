@@ -55,7 +55,7 @@ make status
 - タイトルの優先順: **デスクトップアプリのセッションタイトル**（`~/Library/Application Support/Claude/claude-code-sessions` から `cliSessionId` で照合・15秒ごとに再取得）> 直近のユーザープロンプト > プロジェクト名。ターミナル起動のセッションはアプリのタイトルを持たないので、プロンプトが見出しになります
 - **行をクリック**すると、そのセッションのターミナルアプリが前面に出ます（iTerm2 / Terminal.app / Ghostty / WezTerm / kitty / Alacritty / Warp / Hyper / VS Code / Cursor）。タブ単位のジャンプはしません
 - 状態の色: 許可待ち=橙 / 入力待ち=黄 / 実行中=緑 / 完了=青 / 待機=灰
-- メニューバーの炎アイコンから、表示の切り替え・一覧のクリア・**表示するディスプレイの選択**（自動=マウスのある画面／特定の画面に固定。選んだ画面が外れている間は自動に戻る）・hooks の導入と除去・ログと設定ファイルを開けます
+- メニューバーの炎アイコンから、表示の切り替え・一覧のクリア・**効果音のオン/オフ**・**表示するディスプレイの選択**（自動=マウスのある画面／特定の画面に固定。選んだ画面が外れている間は自動に戻る）・hooks の導入と除去・ログと設定ファイルを開けます
 
 オーバーレイは `.nonactivatingPanel` なので、**クリックしてもターミナルからフォーカスを奪いません**。全 Space・フルスクリーンの上に出ます。
 
@@ -151,6 +151,7 @@ echo '{"session_id":"t1","cwd":"'$HOME'/work/hinomi","hook_event_name":"Stop"}' 
 | `preferredDisplay` | （空 = 自動） | オーバーレイを出すディスプレイ名（`NSScreen.localizedName`）。メニューバーから選ぶのが楽 |
 | `doneSound` | `Glass` | 完了時の効果音（`/System/Library/Sounds` の名前・空文字で無音） |
 | `permissionSound` | （無音） | 許可待ち・入力待ちの効果音。`"Funk"` 等の NSSound 名で有効化 |
+| `soundsEnabled` | `true` | 効果音を鳴らすか。`false` で音名の設定を保ったまま黙らせる（メニューの「効果音」と同じ） |
 | `autoExpandSeconds` | `6` | イベント時に自動展開しておく秒数 |
 | `showWhenEmpty` | `false` | セッション0件でもピルを出す |
 | `doneRetentionMinutes` | `30` | 完了セッションを一覧に残す分数 |

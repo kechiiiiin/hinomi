@@ -99,6 +99,14 @@ final class HinomiConfigTests: XCTestCase {
         XCTAssertEqual(config.permissionWaitSeconds, 30)
         XCTAssertEqual(config.doneSound, HinomiConfig.default.doneSound)
         XCTAssertEqual(config.permissionToolMatcher, HinomiConfig.default.permissionToolMatcher)
+        XCTAssertTrue(config.soundsEnabled)
+    }
+
+    func testSoundsCanBeDisabled() throws {
+        let config = try JSONDecoder().decode(HinomiConfig.self, from: Data(#"{"soundsEnabled": false}"#.utf8))
+        XCTAssertFalse(config.soundsEnabled)
+        // 音を止めても音名の設定自体は残す（また鳴らしたくなったら戻せる）
+        XCTAssertEqual(config.doneSound, HinomiConfig.default.doneSound)
     }
 
     func testWaitIsClamped() {

@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var server: SocketServer?
     private var statusItem: NSStatusItem?
     private var timer: Timer?
+    /// チェックマークをメニューを開くたびに合わせ直すので、項目を持っておく
+    private var soundsItem: NSMenuItem?
 
     override init() {
         config = HinomiConfig.load()
@@ -92,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func play(_ name: String) {
+        guard config.soundsEnabled else { return }
         guard !name.isEmpty, let sound = NSSound(named: NSSound.Name(name)) else { return }
         sound.play()
     }
@@ -106,10 +109,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let menu = NSMenu()
+        menu.delegate = self   // 開くたびにトグルのチェックマークを実状態に合わせる
         menu.addItem(withTitle: "hinomi \(hinomiVersion)", action: nil, keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(makeItem("オーバーレイの表示/非表示", #selector(toggleOverlay)))
         menu.addItem(makeItem("一覧をクリア", #selector(clearSessions)))
+        let sounds = makeItem("効果音", #selector(toggleSounds))
+        sounds.state = config.soundsEnabled ? .on : .off
+        menu.addItem(sounds)
+        soundsItem = sounds
         let displayItem = NSMenuItem(title: "表示するディスプレイ", action: nil, keyEquivalent: "")
         let displayMenu = NSMenu(title: "表示するディスプレイ")
         displayMenu.delegate = self   // 開くたびに接続中の画面一覧で作り直す
@@ -135,7 +143,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - 表示ディスプレイの選択
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu.title == "表示するディスプレイ" else { return }
+        guard menu.title == "表示するディスプレイ" else {
+            // ルートメニュー: 設定ファイルを直接書き換えられている可能性もあるので毎回合わせる
+            soundsItem?.state = config.soundsEnabled ? .on : .off
+            return
+        }
         menu.removeAllItems()
         let current = controller?.preferredDisplay
 
@@ -177,6 +189,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func clearSessions() {
         model.clearAll()
+    }
+
+    @objc private func toggleSounds() {
+        config.soundsEnabled.toggle()
+        soundsItem?.state = config.soundsEnabled ? .on : .off
+        do {
+            try config.save()
+        } catch {
+            alert(title: "設定を保存できませんでした", body: error.localizedDescription)
+        }
     }
 
     @objc private func installHooks() {
