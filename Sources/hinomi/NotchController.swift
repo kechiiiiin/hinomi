@@ -15,8 +15,15 @@ final class NotchController {
     private var collapseWork: DispatchWorkItem?
     private var hidden = false
 
+    /// 表示先ディスプレイ名（NSScreen.localizedName）。nil / 見つからない場合はマウスのある画面
+    var preferredDisplay: String? {
+        didSet { layout() }
+    }
+
     init(model: SessionsModel) {
         self.model = model
+        let preferred = model.config.preferredDisplay
+        self.preferredDisplay = preferred.isEmpty ? nil : preferred
 
         panel = NSPanel(contentRect: NSRect(origin: .zero, size: NotchLayout.collapsedSize),
                         styleMask: [.borderless, .nonactivatingPanel],
@@ -124,6 +131,11 @@ final class NotchController {
     }
 
     private var currentScreen: NSScreen {
+        // 指定ディスプレイが繋がっていればそれを使う（外れている間は自動にフォールバック）
+        if let preferredDisplay,
+           let hit = NSScreen.screens.first(where: { $0.localizedName == preferredDisplay }) {
+            return hit
+        }
         let mouse = NSEvent.mouseLocation
         if let hit = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) { return hit }
         return NSScreen.main ?? NSScreen.screens.first ?? NSScreen()

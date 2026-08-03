@@ -18,6 +18,8 @@ public struct HinomiConfig: Codable, Equatable {
     public var showWhenEmpty: Bool
     /// 完了したセッションを一覧に残す分数
     public var doneRetentionMinutes: Double
+    /// オーバーレイを出すディスプレイ名（NSScreen.localizedName）。空文字で自動（マウスのある画面）
+    public var preferredDisplay: String
 
     public static let `default` = HinomiConfig(
         permissionPromptEnabled: true,
@@ -27,7 +29,8 @@ public struct HinomiConfig: Codable, Equatable {
         permissionSound: "",
         autoExpandSeconds: 6,
         showWhenEmpty: false,
-        doneRetentionMinutes: 30
+        doneRetentionMinutes: 30,
+        preferredDisplay: ""
     )
 
     public init(permissionPromptEnabled: Bool,
@@ -37,7 +40,8 @@ public struct HinomiConfig: Codable, Equatable {
                 permissionSound: String,
                 autoExpandSeconds: Double,
                 showWhenEmpty: Bool,
-                doneRetentionMinutes: Double) {
+                doneRetentionMinutes: Double,
+                preferredDisplay: String = "") {
         self.permissionPromptEnabled = permissionPromptEnabled
         self.permissionWaitSeconds = permissionWaitSeconds
         self.permissionToolMatcher = permissionToolMatcher
@@ -46,11 +50,13 @@ public struct HinomiConfig: Codable, Equatable {
         self.autoExpandSeconds = autoExpandSeconds
         self.showWhenEmpty = showWhenEmpty
         self.doneRetentionMinutes = doneRetentionMinutes
+        self.preferredDisplay = preferredDisplay
     }
 
     private enum CodingKeys: String, CodingKey {
         case permissionPromptEnabled, permissionWaitSeconds, permissionToolMatcher
         case doneSound, permissionSound, autoExpandSeconds, showWhenEmpty, doneRetentionMinutes
+        case preferredDisplay
     }
 
     public init(from decoder: Decoder) throws {
@@ -64,6 +70,7 @@ public struct HinomiConfig: Codable, Equatable {
         autoExpandSeconds = try c.decodeIfPresent(Double.self, forKey: .autoExpandSeconds) ?? d.autoExpandSeconds
         showWhenEmpty = try c.decodeIfPresent(Bool.self, forKey: .showWhenEmpty) ?? d.showWhenEmpty
         doneRetentionMinutes = try c.decodeIfPresent(Double.self, forKey: .doneRetentionMinutes) ?? d.doneRetentionMinutes
+        preferredDisplay = try c.decodeIfPresent(String.self, forKey: .preferredDisplay) ?? d.preferredDisplay
     }
 
     /// 待ち時間は 1〜120 秒に丸める（フックを不用意に長く止めない）

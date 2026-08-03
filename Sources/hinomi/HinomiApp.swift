@@ -12,8 +12,8 @@ enum HinomiApp {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let config: HinomiConfig
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private var config: HinomiConfig
     private let model: SessionsModel
     private var controller: NotchController?
     private var server: SocketServer?
@@ -110,6 +110,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(makeItem("オーバーレイの表示/非表示", #selector(toggleOverlay)))
         menu.addItem(makeItem("一覧をクリア", #selector(clearSessions)))
+        let displayItem = NSMenuItem(title: "表示するディスプレイ", action: nil, keyEquivalent: "")
+        let displayMenu = NSMenu(title: "表示するディスプレイ")
+        displayMenu.delegate = self   // 開くたびに接続中の画面一覧で作り直す
+        displayItem.submenu = displayMenu
+        menu.addItem(displayItem)
         menu.addItem(.separator())
         menu.addItem(makeItem("hooks を導入する…", #selector(installHooks)))
         menu.addItem(makeItem("hooks を外す…", #selector(uninstallHooks)))
@@ -125,6 +130,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         return item
+    }
+
+    // MARK: - 表示ディスプレイの選択
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu.title == "表示するディスプレイ" else { return }
+        menu.removeAllItems()
+        let current = controller?.preferredDisplay
+
+        let auto = NSMenuItem(title: "自動（マウスのある画面）", action: #selector(selectDisplay(_:)), keyEquivalent: "")
+        auto.target = self
+        auto.state = current == nil ? .on : .off
+        menu.addItem(auto)
+        menu.addItem(.separator())
+
+        for screen in NSScreen.screens {
+            let name = screen.localizedName
+            let item = NSMenuItem(title: name, action: #selector(selectDisplay(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = name
+            item.state = current == name ? .on : .off
+            menu.addItem(item)
+        }
+        // 選択中の画面がいま外れている場合も、選択を保持していることが見えるように出す
+        if let current, !NSScreen.screens.contains(where: { $0.localizedName == current }) {
+            let item = NSMenuItem(title: "\(current)（未接続）", action: #selector(selectDisplay(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = current
+            item.state = .on
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func selectDisplay(_ sender: NSMenuItem) {
+        let name = sender.representedObject as? String
+        controller?.preferredDisplay = name
+        config.preferredDisplay = name ?? ""
+        try? config.save()
     }
 
     @objc private func toggleOverlay() {
